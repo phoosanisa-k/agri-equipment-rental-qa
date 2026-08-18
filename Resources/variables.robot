@@ -1,5 +1,10 @@
 *** Variables ***
 ${browser}    chromium
+${headless}           ${False}
+${DEFAULT_TIMEOUT}    30s
+${SHORT_TIMEOUT}      2s
+${VIEWPORT_WIDTH}     ${1440}
+${VIEWPORT_HEIGHT}    ${1000}
 ${Base_URL}           http://localhost:3000
 
 #-------------------------------------------------------------------------
@@ -13,7 +18,7 @@ ${Btn_Verify}       //button[contains(text(),'ตกลง')]
 #-------------------------------------------------------------------------
 #Register Farmer Usecase
 ${Register_farmerURL}    ${Base_URL}/auths/register-farmer
-${TestDataDir}           ${CURDIR}/../Testdata
+${TestDataDir}           ${CURDIR}/../TestData/img
 ${Img}                      //input[@name='farmerImg']
 ${Text_RUsername}           //input[@name='farmerUserName']
 ${Text_REmail}              //input[@name='farmerEmail']
