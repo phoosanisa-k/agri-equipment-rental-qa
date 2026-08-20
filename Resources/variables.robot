@@ -47,7 +47,10 @@ ${Text_Province}            //input[@name='farmerProvince']
 ${Text_Postcode}            //input[@name='farmerPostalCode']
 ${Btn_Register}             //button[contains(text(),'สมัครสมาชิก')]
 
-${Error_Message}            css=p.text-sm.text-red-600.flex.items-center.gap-1 >> visible=true
+# จับ element ที่มีคลาสขึ้นต้นด้วย text-red ทุกแบบ (text-red-500, text-red-600, text-xs ฯลฯ)
+# ไม่ผูกกับคลาสจัดวาง (flex, items-center, gap-1) เพราะข้อความบางอันไม่มีไอคอนนำหน้า
+# จึงไม่มีคลาสเหล่านั้น เช่น "รหัสผ่านไม่ตรงกัน" ใต้ช่องยืนยันรหัสผ่าน
+${Error_Message}            css=[class*="text-red"] >> visible=true
 
 #------------------------------------------------------------------------
 # Add Cart Usecase

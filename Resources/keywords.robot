@@ -6,10 +6,29 @@ Resource          variables.robot
 
 
 *** Keywords ***
+#-------------------------------------------------------------------------
+# Login Farmer
+# เปิด browser process เดียว แล้วใช้ context ใหม่ในแต่ละกรณีทดสอบ
+Open Login Browser
+    New Browser            ${browser}    headless=${headless}
+    Set Browser Timeout    ${DEFAULT_TIMEOUT}
+    # ปิดการถ่ายภาพหน้าจออัตโนมัติของ Browser library
+    # เพราะสคริปต์ถ่ายภาพเองอยู่แล้วเมื่อกรณีทดสอบไม่ผ่าน (เก็บไว้ในโฟลเดอร์ Error IMG)
+    Register Keyword To Run On Failure    None
+
+Close Login Context
+    Close Context
+
+Close All Login Browsers
+    Close Browser    ALL
+
 Open Login Page
-    New Browser    ${browser}    headless=${headless}
+    [Documentation]    เปิด context และหน้าเข้าสู่ระบบใหม่
+    ...                ต้องเรียก Open Login Browser มาก่อน (ทำที่ Suite Setup)
     New Context
-    New Page    ${Login_farmerURL}
+    New Page                   ${Login_farmerURL}
+    Set Viewport Size          ${VIEWPORT_WIDTH}    ${VIEWPORT_HEIGHT}
+    Wait For Elements State    ${Text_Username}    visible    ${DEFAULT_TIMEOUT}
 
 Input Username
     [Arguments]    ${Username}
@@ -136,24 +155,20 @@ Select Gender
         Select Options By    ${Select_Gender}    value    male
     ELSE IF    '${Gender}' == 'หญิง'
         Select Options By    ${Select_Gender}    value    female
+    ELSE
+        # ไม่เลือกเพศ : ต้องเข้าช่องแล้วออก ระบบจึงจะตรวจสอบและแสดงข้อความ
+        # ช่องข้อความอื่นถูกแตะอัตโนมัติจาก Fill Text แม้กรอกค่าว่าง แต่ select ไม่ใช่
+        Focus    ${Select_Gender}
+        Focus    ${Text_Phone}
     END
 
 Input Birthdate
     [Arguments]    ${Daybirth}    ${Monthbirth}    ${Yearbirth}
-    IF    '${Daybirth}' == '${EMPTY}'    RETURN
-
+    # กรอกทุกช่องเสมอแม้เป็นค่าว่าง เพื่อให้ระบบตรวจสอบและแสดงข้อความ
+    # ข้อมูลปีในไฟล์ทดสอบเป็น พ.ศ. อยู่แล้ว จึงกรอกลงไปตรง ๆ
     Fill Text    ${Date_Birth}    ${Daybirth}
     Fill Text    ${Date_Month}    ${Monthbirth}
-
-    # แปลง ค.ศ. เป็น พ.ศ. ตามเอกสาร test case
-    # เฉพาะเมื่อข้อมูลปีเป็นตัวเลขจริง มิฉะนั้นกรอกค่าดิบเพื่อทดสอบรูปแบบที่ไม่ถูกต้อง
-    ${IsNumber}=    Evaluate    "${Yearbirth}".strip().isdigit()
-    IF    ${IsNumber}
-        ${YearBE}=    Evaluate    int("${Yearbirth}") + 543
-        Fill Text    ${Date_Year}    ${YearBE}
-    ELSE
-        Fill Text    ${Date_Year}    ${Yearbirth}
-    END
+    Fill Text    ${Date_Year}     ${Yearbirth}
 
 Input Tel
     [Arguments]    ${Tel}
@@ -204,7 +219,10 @@ Get Validation Messages
     FOR    ${Element}    IN    @{Elements}
         ${Text}=    Get Text        ${Element}
         ${Text}=    Strip String    ${Text}
-        IF    '${Text}' != '${EMPTY}'
+
+        # locator กว้างขึ้นแล้วอาจจับได้ทั้ง element แม่และลูกที่มีข้อความเดียวกัน จึงกรองข้อความซ้ำออก
+        ${IsDuplicate}=    Evaluate    $Text in $Messages
+        IF    '${Text}' != '${EMPTY}' and not ${IsDuplicate}
             Append To List    ${Messages}    ${Text}
         END
     END
