@@ -1,9 +1,11 @@
 *** Settings ***
-Documentation     TC02 - Register Farmer | ทดสอบฟังก์ชันสมัครสมาชิกของเกษตรกร
+Documentation     TC02 - Register Farmer | รวมการทดสอบยูสเคส "สมัครสมาชิก" ของเกษตรกรไว้ในไฟล์เดียว
 ...
-...               อ้างอิงเอกสาร System Test Case จำนวน 167 กรณีทดสอบ
-...               เลือกกรณีที่ต้องการรันจากคอลัมน์ ${Run} (Yes/No) ในไฟล์ Data.xlsx
-...               ผลการทดสอบถูกเขียนกลับลงคอลัมน์ ActualResult และ ResultPF อัตโนมัติ
+...               ส่วนที่ 1 (TC02_001 - TC02_167) : ตรวจข้อความแจ้งเตือนรายฟิลด์ โดยกดปุ่ม "ถัดไป" และ "สมัครสมาชิก" จริง
+...               ส่วนที่ 2 (TC02_F00 - TC02_F08) : ทดสอบกระบวนการสมัครสมาชิกทั้งกระบวนการ รวมกรณีข้อมูลซ้ำ
+...
+...               เลือกกรณีที่รันจากคอลัมน์ ${Run} (Yes/No) ใน Data.xlsx และเขียนผลกลับลง ActualResult / ResultPF
+...               หมายเหตุ : ส่วนที่ 1 มีการกดปุ่มสมัครจริง กรณีที่ข้อมูลถูกต้องจึงสร้างบัญชีจริงในฐานข้อมูลทดสอบ
 Metadata          System      ระบบเว็บศูนย์กลางให้บริการเช่าอุปกรณ์ทางการเกษตร (SRS v7.0)
 Metadata          Use Case    TC02 Register Farmer
 Metadata          Test Data   TestData/Data.xlsx (sheet: Register_Farmer)
@@ -13,40 +15,43 @@ Library           DataDriver    file=${CURDIR}/../TestData/Data.xlsx    sheet_na
 Library           ExcelLibrary
 Library           OperatingSystem
 Library           String
+Library           Collections
 
-Suite Setup       Prepare Register Suite
-Suite Teardown    Finish Register Suite
-Test Teardown     Register Test Teardown
-
-Test Template     Register_Farmer
+Suite Setup       เปิดชุดทดสอบ
+Suite Teardown    ปิดชุดทดสอบ
+Test Teardown     เก็บผลท้ายกรณีทดสอบ
+Test Template     ดำเนินการกรณีทดสอบ
 
 
 *** Variables ***
+# ---------- ที่อยู่ของไฟล์และโฟลเดอร์ ----------
 ${DATA_FILE}      ${CURDIR}/../TestData/Data.xlsx
 ${SHEET}          Register_Farmer
 ${ERROR_DIR}      ${CURDIR}/../Error IMG
+${EVIDENCE_DIR}   ${CURDIR}/../Flow IMG
 ${USECASE}        TC02_Register_Farmer
 
+# ---------- ตำแหน่งคอลัมน์ในชีต ----------
+${COL_ID}         ${2}     # คอลัมน์ B : ${TestCaseID}
 ${COL_ACTUAL}     ${24}    # คอลัมน์ X : ${ActualResult}
 ${COL_PF}         ${25}    # คอลัมน์ Y : ${ResultPF}
 
-# ข้อความแทน "ไม่มีข้อความแจ้งเตือน" ให้ตรงกับที่ระบุในเอกสาร Test Case
-${PASS_MESSAGE}   ผ่านการตรวจสอบ
+# ---------- ข้อความและตัวชี้วัดที่ใช้ตัดสินผล ----------
+# ใช้แทนกรณี "ข้อมูลถูกต้อง ไม่มีข้อความแจ้งเตือน" ตามคำที่เอกสาร Test Case ระบุ
+${PASS_MESSAGE}       ผ่านการตรวจสอบ
+${SUCCESS_KEYWORD}    สำเร็จ
+${Popup_Success}      text=${SUCCESS_KEYWORD}
+# รอสั้น ๆ เพราะกรณีที่ต้องไม่สำเร็จจะไม่มี popup ขึ้นเลย
+${POPUP_TIMEOUT}      5s
+${NO_RESPONSE}        ไม่พบข้อความแจ้งเตือน และระบบไม่ได้สมัครสมาชิกให้
 
-# ตัวแปรระดับกรณีทดสอบ ใช้ส่งข้อมูลให้ teardown
-${TC_ID}             UNKNOWN
-${ROW_NUM}           ${0}
-${RESULT_RECORDED}   ${False}
-
-# ข้อความที่ระบบตอบต่างสำนวนจากเอกสาร แต่ตรวจแล้วว่าเป็นกฎเดียวกัน จึงยอมรับเป็น Pass
-# ระบุรายกรณีเพื่อให้ตรวจสอบย้อนหลังได้ว่าอนุโลมเคสใดไปบ้าง
+# ---------- รายการอนุโลม : ข้อความต่างสำนวนจากเอกสาร แต่สื่อกฎเดียวกัน ----------
+# (เอกสารเขียนว่า TC02_024 "กรุณากรอกข้อมูลให้ถูกต้อง", TC02_086 "กรุณากรอกเป็นตัวเลข 0-9")
 &{ACCEPTED_MESSAGE}
-# TC02_024 : เอกสาร "กรุณากรอกข้อมูลให้ถูกต้อง" / ระบบ "รูปแบบอีเมลไม่ถูกต้อง" - กฎเดียวกัน
 ...    TC02_024=รูปแบบอีเมลไม่ถูกต้อง
-# TC02_086 : เอกสาร "กรุณากรอกเป็นตัวเลข 0-9" / ระบบ "เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น" - กฎเดียวกัน
 ...    TC02_086=เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น
 
-# เกณฑ์การเทียบข้อความระดับคำ (% ของคำหลักในเอกสารที่ต้องพบในข้อความของระบบ)
+# % ของคำหลักในเอกสารที่ต้องพบในข้อความของระบบ จึงถือว่าตรงกัน
 ${WORD_MATCH_THRESHOLD}    ${60}
 
 # คำทั่วไปที่ไม่สื่อความหมายของกฎ ตัดทิ้งก่อนเทียบ
@@ -55,75 +60,292 @@ ${WORD_MATCH_THRESHOLD}    ${60}
 ...    เท่านั้น    อัปโหลด    ตั้งแต่    ความ    อย่าง    ได้    ใน    กับ    ตัว    นั้น    นี้    จะ
 ...    ค่า    ระหว่าง    ถึง    เลือก    ประกอบ    ไป    ด้วย    รองรับ    เฉพาะ    ประเภท    /
 
-# ชื่อฟิลด์บนฟอร์ม ใช้ยืนยันว่าข้อความที่อ่านได้มาจากฟิลด์เดียวกับที่ทดสอบ
-# กันการจับคู่ผิดฟิลด์ เช่น "อีเมล 5-60 ตัวอักษร" กับ "รหัสผ่าน 5-60 ตัวอักษร"
+# ชื่อฟิลด์บนฟอร์ม กันจับคู่ผิดฟิลด์ เช่น "อีเมล 5-60 ตัวอักษร" กับ "รหัสผ่าน 5-60 ตัวอักษร"
 @{FIELD_NAMES}
 ...    ชื่อผู้ใช้    ชื่อจริง    นามสกุล    อีเมล    ยืนยันรหัสผ่าน    รหัสผ่าน    เพศ    วันเกิด    อายุ
 ...    เบอร์โทรศัพท์    เลขที่บ้าน    ซอย    หมู่    ตำบล    แขวง    อำเภอ    เขต    จังหวัด
 ...    รหัสไปรษณีย์    รูปภาพ    ไฟล์
 
+# ---------- ตัวแปรระดับกรณีทดสอบ ใช้ส่งข้อมูลให้ teardown ----------
+${TC_ID}             UNKNOWN
+${ROW_NUM}           ${0}
+${ACTUAL_MESSAGE}    ${EMPTY}
+
 
 *** Test Cases ***
-Register For ${TestCaseID}
+Register Farmer : ${TestCaseID}
 
 
 *** Keywords ***
 # =====================================================================
-# การเตรียมและปิดงาน
+# 1. การเตรียมและปิดชุดทดสอบ
 # =====================================================================
 
-Prepare Register Suite
+เปิดชุดทดสอบ
     [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
     Create Directory    ${ERROR_DIR}
+    Create Directory    ${EVIDENCE_DIR}
+    ลบภาพของรอบก่อน    ${ERROR_DIR}
+    ลบภาพของรอบก่อน    ${EVIDENCE_DIR}
 
-    # ล้างเฉพาะไฟล์ข้างใน ไม่ลบตัวโฟลเดอร์ (Windows มักติด Access denied จาก OneDrive)
-    ${Cleaned}=    Run Keyword And Return Status    Empty Directory    ${ERROR_DIR}
-    IF    not ${Cleaned}
-        Log    ล้างโฟลเดอร์ ${ERROR_DIR} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
-    END
-
-    Open Excel Document    ${DATA_FILE}    Result
+    Open Excel Document    ${DATA_FILE}    Register
     Open Register Browser
 
-Finish Register Suite
+ลบภาพของรอบก่อน
+    [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่แตะภาพของยูสเคสอื่นที่อยู่โฟลเดอร์เดียวกัน
+    ...                และไม่ลบตัวโฟลเดอร์ เพราะ OneDrive มักคืน Access denied
+    [Arguments]    ${Folder}
+    ${Files}=    List Files In Directory    ${Folder}    ${USECASE}_*.png
+    FOR    ${File}    IN    @{Files}
+        ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
+        IF    not ${Removed}
+            Log    ลบไฟล์ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
+        END
+    END
+
+ปิดชุดทดสอบ
     [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
     Run Keyword And Ignore Error    Save Excel Document    ${DATA_FILE}
     Run Keyword And Ignore Error    Close All Excel Documents
     Close All Register Browsers
 
-Register Test Teardown
-    [Documentation]    เก็บภาพหน้าจอเมื่อไม่ผ่าน และบันทึก error ลง Excel ถ้ายังไม่ได้บันทึกผล
+เก็บผลท้ายกรณีทดสอบ
+    [Documentation]    เก็บภาพเมื่อไม่ผ่าน เขียนผลกลับลง Excel แล้วปิด context
+    ...                กรณีที่ถูกข้าม (${ROW_NUM} = 0) จะไม่เขียนทับผลเดิม
+    ${Actual}=    Set Variable    ${ACTUAL_MESSAGE}
+
     IF    '${TEST STATUS}' == 'FAIL'
         Run Keyword And Ignore Error
         ...    Take Screenshot    ${ERROR_DIR}/${USECASE}_${TC_ID}    fullPage=True
 
-        # กรณีเกิด error กลางทาง จะยังไม่ได้บันทึกผล จึงเขียนข้อความ error ลงแทน
-        IF    ${ROW_NUM} > 0 and not ${RESULT_RECORDED}
-            ${ErrorText}=    Get Line         ${TEST MESSAGE}    0
-            ${ErrorText}=    Get Substring    ${ErrorText}       0    200
-            Run Keyword And Ignore Error
-            ...    Record Test Result    ${ROW_NUM}    ${ErrorText}    Fail
+        # กรณีที่ล้มก่อนได้ข้อความจากระบบ ให้บันทึกสาเหตุที่ล้มแทน
+        ${Length}=    Get Length    ${ACTUAL_MESSAGE}
+        IF    ${Length} == 0
+            ${Actual}=    Get Line         ${TEST MESSAGE}    0
+            ${Actual}=    Get Substring    ${Actual}          0    250
         END
     END
 
-    # ใช้ Ignore Error เพราะกรณีที่ถูก Skip จะยังไม่มี context ถูกเปิด
+    IF    ${ROW_NUM} > 0
+        ${ResultPF}=    Set Variable If    '${TEST STATUS}' == 'PASS'    Pass    Fail
+        Run Keyword And Ignore Error    บันทึกผลลง Excel    ${ROW_NUM}    ${Actual}    ${ResultPF}
+    END
+
+    # Ignore Error เพราะกรณีที่ถูกข้ามยังไม่มี context ถูกเปิด
     Run Keyword And Ignore Error    Close Register Context
 
-Record Test Result
-    [Documentation]    เขียนผลจริงและสถานะ Pass/Fail กลับลงไฟล์ Excel ตามแถวของกรณีทดสอบ
+
+# =====================================================================
+# 2. การอ่านและเขียนไฟล์ Excel
+# =====================================================================
+
+หาแถวของกรณีทดสอบ
+    [Documentation]    ค้นหมายเลขแถวจากรหัสกรณีทดสอบในคอลัมน์ B (index 0 คือหัวตาราง แถวจึงเป็น index + 1)
+    ...                คืน 0 เมื่อไม่พบ เพื่อให้ teardown ข้ามการเขียนผลแทนที่จะล้ม
+    [Arguments]    ${TestCaseID}
+    ${Ids}=    Read Excel Column    ${COL_ID}    sheet_name=${SHEET}
+    ${Ids}=    Evaluate    ["" if v is None else str(v).strip() for v in $Ids]
+
+    ${Found}=    Run Keyword And Return Status    List Should Contain Value    ${Ids}    ${TestCaseID}
+    IF    not ${Found}
+        Log    ไม่พบ ${TestCaseID} ในคอลัมน์ B ของชีต ${SHEET} จึงไม่เขียนผลกลับ    level=WARN
+        RETURN    ${0}
+    END
+
+    ${Index}=    Get Index From List    ${Ids}    ${TestCaseID}
+    ${Row}=      Evaluate    ${Index} + 1
+    RETURN    ${Row}
+
+บันทึกผลลง Excel
+    [Documentation]    เขียนผลที่ได้จริงและสถานะ Pass/Fail กลับลงไฟล์ Excel ตามแถวของกรณีทดสอบ
     [Arguments]    ${Row}    ${ActualResult}    ${ResultPF}
     Write Excel Cell       ${Row}    ${COL_ACTUAL}    ${ActualResult}    sheet_name=${SHEET}
     Write Excel Cell       ${Row}    ${COL_PF}        ${ResultPF}        sheet_name=${SHEET}
     Save Excel Document    ${DATA_FILE}
-    Set Test Variable      ${RESULT_RECORDED}    ${True}
 
 
 # =====================================================================
-# การเปรียบเทียบข้อความ
+# 3. จุดเริ่มของทุกกรณีทดสอบ
+# =====================================================================
+
+ดำเนินการกรณีทดสอบ
+    [Documentation]    แยกทางตามรหัสกรณีทดสอบ
+    ...                TC02_NNN  -> ตรวจข้อความแจ้งเตือนรายฟิลด์ พร้อมกดปุ่มจริง
+    ...                TC02_FNN  -> ทดสอบทั้งกระบวนการ โดยเรียกคีย์เวิร์ด "กรณี <รหัส>"
+    [Arguments]
+    ...    ${Run}          ${TestCaseID}      ${TestScanario}      ${Picture}       ${UsernameR}
+    ...    ${Email}        ${PasswordR}       ${Confirmpassword}
+    ...    ${Firstname}    ${Surname}         ${Gender}
+    ...    ${Daybirth}     ${Monthbirth}      ${Yearbirth}         ${Tel}
+    ...    ${Hnum}         ${Alley}           ${Group}             ${District}
+    ...    ${Canton}       ${province}        ${Postcode}
+    ...    ${ExpectedResult}
+
+    # แถวสรุปผลท้ายชีตไม่มีรหัสกรณีทดสอบ จึงไม่ใช่กรณีทดสอบ
+    IF    '${TestCaseID}' == '${EMPTY}'
+        Skip    ไม่ใช่กรณีทดสอบ (แถวสรุปผลในไฟล์ Excel)
+    END
+    IF    '${Run}' != 'Yes'
+        Skip    ไม่ได้เลือกให้รัน (Run = ${Run})
+    END
+
+    Set Test Documentation    ${TestScanario}
+    Set Test Variable         ${TC_ID}             ${TestCaseID}
+    Set Test Variable         ${ACTUAL_MESSAGE}    ${EMPTY}
+
+    ${Row}=    หาแถวของกรณีทดสอบ    ${TestCaseID}
+    Set Test Variable    ${ROW_NUM}    ${Row}
+
+    ${Data}=    Create Dictionary
+    ...    Picture=${Picture}              UsernameR=${UsernameR}              Email=${Email}
+    ...    PasswordR=${PasswordR}          Confirmpassword=${Confirmpassword}
+    ...    Firstname=${Firstname}          Surname=${Surname}                  Gender=${Gender}
+    ...    Daybirth=${Daybirth}            Monthbirth=${Monthbirth}            Yearbirth=${Yearbirth}
+    ...    Tel=${Tel}                      Hnum=${Hnum}                        Alley=${Alley}
+    ...    Group=${Group}                  District=${District}                Canton=${Canton}
+    ...    Province=${province}            Postcode=${Postcode}
+
+    ${Data}=    แทนค่า AUTO ด้วยค่าที่ไม่ซ้ำ    ${Data}
+    Log    ${TestCaseID} : ${TestScanario} | ข้อมูลที่ใช้ทดสอบ ${Data}    level=INFO
+
+    ${IsFlow}=    Evaluate    "_F" in "${TestCaseID}"
+    IF    ${IsFlow}
+        Run Keyword    กรณี ${TestCaseID}    ${Data}    ${ExpectedResult}
+    ELSE
+        ตรวจข้อความแจ้งเตือนรายฟิลด์    ${Data}    ${ExpectedResult}
+    END
+
+แทนค่า AUTO ด้วยค่าที่ไม่ซ้ำ
+    [Documentation]    ช่องที่เขียนว่า AUTO ใน Excel จะถูกสุ่มค่าใหม่ทุกครั้งที่รัน
+    ...                ใช้กับกรณีทั้งกระบวนการ จึงรันซ้ำได้แม้ระบบจะตรวจชื่อผู้ใช้/อีเมล/เบอร์โทรซ้ำ
+    [Arguments]    ${Data}
+    ${Username}    ${Email}    ${Tel}=    สร้างข้อมูลบัญชีที่ไม่ซ้ำ
+
+    # เทียบผ่านตัวแปร $Data ไม่แทนค่าลงใน expression เพราะข้อมูลทดสอบอาจมีอัญประกาศหรือขึ้นบรรทัดใหม่
+    ${AutoUsername}=    Evaluate    $Data["UsernameR"] == "AUTO"
+    ${AutoEmail}=       Evaluate    $Data["Email"] == "AUTO"
+    ${AutoTel}=         Evaluate    $Data["Tel"] == "AUTO"
+    ${AutoConfirm}=     Evaluate    $Data["Confirmpassword"] == "AUTO"
+
+    IF    ${AutoUsername}    Set To Dictionary    ${Data}    UsernameR=${Username}
+    IF    ${AutoEmail}       Set To Dictionary    ${Data}    Email=${Email}
+    IF    ${AutoTel}         Set To Dictionary    ${Data}    Tel=${Tel}
+    IF    ${AutoConfirm}     Set To Dictionary    ${Data}    Confirmpassword=${Data}[PasswordR]
+    RETURN    ${Data}
+
+สร้างข้อมูลบัญชีที่ไม่ซ้ำ
+    [Documentation]    สร้างชื่อผู้ใช้ / อีเมล / เบอร์โทรที่ไม่ซ้ำ เพื่อรันซ้ำได้โดยไม่ต้องล้างฐานข้อมูล
+    # 8 หลักท้ายของเลขเวลา + สุ่ม 3 หลัก ให้ชื่อไม่เกิน 20 ตัวอักษรตามกฎของระบบ
+    ${Stamp}=       Get Time    epoch
+    ${Suffix}=      Evaluate    str($Stamp)[-8:] + str(random.randint(100, 999))    modules=random
+    ${Username}=    Set Variable    pkfarmer${Suffix}
+    ${Email}=       Set Variable    ${Username}@mail.com
+
+    # เบอร์โทร 10 หลัก ขึ้นต้น 09 ตามกฎของระบบ
+    ${Tel}=    Evaluate    "09" + "".join(str(random.randint(0, 9)) for _ in range(8))    modules=random
+    RETURN    ${Username}    ${Email}    ${Tel}
+
+
+# =====================================================================
+# 4. ส่วนที่ 1 : ตรวจข้อความแจ้งเตือนรายฟิลด์ (TC02_001 - TC02_167)
+# =====================================================================
+
+ตรวจข้อความแจ้งเตือนรายฟิลด์
+    [Documentation]    กรอกข้อมูลทั้ง 2 ขั้นตอน แล้วกดปุ่ม "ถัดไป" และ "สมัครสมาชิก" จริง
+    ...                ตัดสินผลจากสองอย่างคู่กัน คือข้อความที่ระบบแจ้ง และระบบยอมสมัครให้หรือไม่
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    Open Register Page
+
+    # ---------- ขั้นตอนที่ 1 : ข้อมูลบัญชีผู้ใช้ ----------
+    กรอกข้อมูลบัญชีผู้ใช้    ${Data}
+    ${NextClicked}=    Click Next Button
+    ${Messages}=       Get Validation Messages
+    ${OnStep2}=        Is Register Step2 Displayed
+    ${Registered}=     Set Variable    ${EMPTY}
+    ${Blocked}=        Set Variable    ${EMPTY}
+
+    # ---------- ขั้นตอนที่ 2 : ข้อมูลส่วนตัวและที่อยู่ ----------
+    IF    ${OnStep2}
+        กรอกข้อมูลส่วนตัว    ${Data}
+        ${RegisterClicked}=    Click Register Button
+        ${Messages}=           Get Validation Messages
+        IF    ${RegisterClicked}
+            ${Registered}=    รอผลการสมัคร
+        ELSE
+            ${Blocked}=    Set Variable    ปุ่ม "สมัครสมาชิก" ถูกปิดใช้งาน ระบบไม่ให้สร้างบัญชี
+        END
+    ELSE IF    not ${NextClicked}
+        ${Blocked}=    Set Variable    ปุ่ม "ถัดไป" ถูกปิดใช้งาน ระบบไม่ให้ไปขั้นตอนที่ 2
+    ELSE
+        ${Blocked}=    Set Variable    กดปุ่ม "ถัดไป" ได้ แต่ระบบไม่ได้พาไปขั้นตอนที่ 2
+    END
+    ${BlockedLen}=    Get Length    ${Blocked}
+    IF    ${BlockedLen} > 0    Log    ${Blocked}    level=INFO
+
+    ${ActualResult}=    สรุปผลที่ได้จริง          ${Messages}    ${Registered}    ${Blocked}
+    ${Matched}=         ผลตรงกับที่เอกสารกำหนด    ${Messages}    ${Registered}    ${ExpectedResult}
+
+    บันทึกผลที่ได้จริง    ${ActualResult}
+    Should Be True    ${Matched}
+    ...    msg=${TC_ID} : ระบบตอบว่า "${ActualResult}" แต่เอกสารกำหนดไว้ว่า "${ExpectedResult}"
+
+สรุปผลที่ได้จริง
+    [Documentation]    ข้อความที่จะบันทึกลงคอลัมน์ ActualResult คือสิ่งที่ระบบตอบมาจริง เรียงตามลำดับ
+    ...                สมัครสำเร็จ           -> ข้อความบน popup
+    ...                มีข้อความแจ้งเตือน    -> รวมทุกข้อความที่พบ
+    ...                ไม่มีข้อความ           -> ระบุว่าระบบกันไว้ตรงไหน เช่น ปุ่มถูกปิดใช้งานโดยไม่แจ้งเหตุผล
+    [Arguments]    ${Messages}    ${Registered}    ${Blocked}
+    ${RegLen}=    Get Length    ${Registered}
+    IF    ${RegLen} > 0    RETURN    ${Registered}
+
+    ${Count}=    Get Length    ${Messages}
+    IF    ${Count} > 0
+        ${Joined}=    Evaluate    " | ".join($Messages)
+        RETURN    ${Joined}
+    END
+
+    ${BlockedLen}=    Get Length    ${Blocked}
+    IF    ${BlockedLen} == 0    RETURN    ${NO_RESPONSE}
+    RETURN    ${Blocked} (ไม่มีข้อความแจ้งเตือน)
+
+ผลตรงกับที่เอกสารกำหนด
+    [Documentation]    เอกสารระบุ "ผ่านการตรวจสอบ" -> ต้องไม่มีข้อความแจ้งเตือน และระบบต้องสมัครให้สำเร็จ
+    ...                เอกสารระบุข้อความแจ้งเตือน   -> ระบบต้องไม่สมัครให้ และข้อความต้องตรงกับเอกสาร
+    [Arguments]    ${Messages}    ${Registered}    ${ExpectedResult}
+    ${Count}=      Get Length    ${Messages}
+    ${RegLen}=     Get Length    ${Registered}
+
+    ${ExpNorm}=     Normalize Message    ${ExpectedResult}
+    ${PassNorm}=    Normalize Message    ${PASS_MESSAGE}
+    ${WantPass}=    Evaluate    $ExpNorm == $PassNorm
+
+    IF    ${WantPass}
+        ${Ok}=    Evaluate    ${Count} == 0 and ${RegLen} > 0
+        IF    not ${Ok}
+            Log    ข้อมูลถูกต้องตามเอกสาร แต่ระบบไม่ได้สมัครสมาชิกให้ (ข้อความแจ้งเตือน ${Count} รายการ)    level=WARN
+        END
+        RETURN    ${Ok}
+    END
+
+    IF    ${RegLen} > 0
+        Log    ระบบสมัครสมาชิกให้สำเร็จ ทั้งที่เอกสารกำหนดว่าต้องแจ้งเตือน "${ExpectedResult}"    level=WARN
+        RETURN    ${False}
+    END
+
+    FOR    ${Message}    IN    @{Messages}
+        ${Matched}=    Is Message Matched    ${Message}    ${ExpectedResult}    ${TC_ID}
+        IF    ${Matched}    RETURN    ${True}
+    END
+    RETURN    ${False}
+
+
+# =====================================================================
+# 5. การเปรียบเทียบข้อความ
 # =====================================================================
 
 Normalize Message
-    [Documentation]    ปรับข้อความเป็นรูปมาตรฐาน - รวมขีดกลางทุกแบบ ตัดช่องว่าง ไม่แยกตัวพิมพ์
+    [Documentation]    ปรับข้อความเป็นรูปมาตรฐาน รวมขีดกลางทุกแบบ ตัดช่องว่าง ไม่แยกตัวพิมพ์
     [Arguments]    ${Text}
     ${Text}=    Evaluate    unicodedata.normalize("NFC", str($Text))    modules=unicodedata
     ${Text}=    Evaluate    "".join("-" if 0x2010 <= ord(c) <= 0x2015 or ord(c) == 0x2212 else c for c in $Text)
@@ -148,7 +370,7 @@ Get Fields In Message
     RETURN    ${Found}
 
 Is Message Matched By Words
-    [Documentation]    เทียบระดับคำ ต้องเป็นฟิลด์เดียวกัน และคำหลักตรงกันตามเกณฑ์ที่กำหนด
+    [Documentation]    เทียบระดับคำ ต้องเป็นฟิลด์เดียวกันและคำหลักตรงกันตามเกณฑ์ที่กำหนด
     [Arguments]    ${Message}    ${ExpectedResult}
     ${FieldsExp}=    Get Fields In Message    ${ExpectedResult}
     ${FieldsAct}=    Get Fields In Message    ${Message}
@@ -168,8 +390,7 @@ Is Message Matched By Words
     ${Count}=    Get Length    ${WordsExp}
     IF    ${Count} == 0    RETURN    ${SameField}
 
-    # ตรงกันเมื่อคำเหมือนกัน หรือคำหนึ่งเป็นส่วนหนึ่งของอีกคำและยาวตั้งแต่ 3 ตัวอักษร
-    # เช่น เอกสารเขียน "ภาษาอังกฤษ" ระบบเขียน "อังกฤษ" - เงื่อนไขความยาวกันเลขสั้นจับคู่มั่ว
+    # ตรงเมื่อคำเหมือนกัน หรือเป็นส่วนหนึ่งของกันและยาว 3 ตัวอักษรขึ้นไป (กันคำสั้นจับคู่มั่ว)
     ${Hit}=    Evaluate
     ...    list(filter(lambda w, a=$WordsAct: any(w == x or (len(x) >= 3 and x in w) or (len(w) >= 3 and w in x) for x in a), $WordsExp))
 
@@ -179,9 +400,7 @@ Is Message Matched By Words
     RETURN    ${Matched}
 
 Is Message Matched
-    [Documentation]    ตัดสินว่าข้อความจากหน้าเว็บตรงกับที่เอกสารคาดหวังหรือไม่ ตามลำดับ
-    ...                1) ปรับรูปแบบแล้วตรงกัน  2) เป็นส่วนหนึ่งของกัน
-    ...                3) อยู่ใน &{ACCEPTED_MESSAGE}  4) เทียบระดับคำ
+    [Documentation]    ตัดสินว่าข้อความตรงกับเอกสารไหม ตามลำดับ ตรงตัว > เป็นส่วนของกัน > รายการอนุโลม > ระดับคำ
     [Arguments]    ${Message}    ${ExpectedResult}    ${TestCaseID}
     ${Actual}=      Normalize Message    ${Message}
     ${Expected}=    Normalize Message    ${ExpectedResult}
@@ -192,111 +411,278 @@ Is Message Matched
     ${Accepted}=    Get From Dictionary    ${ACCEPTED_MESSAGE}    ${TestCaseID}    default=${EMPTY}
     IF    '${Accepted}' == '${EMPTY}'
         ${ByWords}=    Is Message Matched By Words    ${Message}    ${ExpectedResult}
-        IF    ${ByWords}    Log    ${TestCaseID}: ต่างสำนวนแต่คำหลักตรงและเป็นฟิลด์เดียวกัน    level=INFO
+        IF    ${ByWords}    Log    ${TestCaseID} : ต่างสำนวนแต่คำหลักตรงและเป็นฟิลด์เดียวกัน    level=INFO
         RETURN    ${ByWords}
     END
 
     ${AcceptedNorm}=    Normalize Message    ${Accepted}
     ${Matched}=         Evaluate    $Actual == $AcceptedNorm
-    IF    ${Matched}    Log    ${TestCaseID}: ต่างสำนวน แต่อยู่ในรายการที่อนุโลมไว้    level=INFO
+    IF    ${Matched}    Log    ${TestCaseID} : ต่างสำนวน แต่อยู่ในรายการที่อนุโลมไว้    level=WARN
     RETURN    ${Matched}
 
-Resolve Actual Result
-    [Documentation]    เลือกข้อความที่จะบันทึกเป็นผลจริง
-    ...                ไม่มีข้อความ -> "ผ่านการตรวจสอบ" / ตรงกับที่คาดหวัง -> ใช้ข้อความนั้น
-    ...                ไม่ตรง -> รวมทุกข้อความที่แสดงจริง เพื่อให้เห็นว่าระบบตอบอะไรกลับมา
-    [Arguments]    ${Messages}    ${ExpectedResult}    ${TestCaseID}
-    ${Count}=    Get Length    ${Messages}
-    IF    ${Count} == 0    RETURN    ${PASS_MESSAGE}
 
-    FOR    ${Message}    IN    @{Messages}
-        ${Matched}=    Is Message Matched    ${Message}    ${ExpectedResult}    ${TestCaseID}
-        IF    ${Matched}    RETURN    ${ExpectedResult}
+# =====================================================================
+# 6. ส่วนที่ 2 : ทดสอบทั้งกระบวนการ (TC02_F00 - TC02_F08)
+# =====================================================================
+
+กรณี TC02_F00
+    [Documentation]    สร้างบัญชีตั้งต้นไว้อ้างอิงในกรณีข้อมูลซ้ำ (F02 / F03 / F07)
+    ...                รันครั้งแรกจะสมัครใหม่ ครั้งต่อไปถ้าระบบแจ้งว่าข้อมูลซ้ำถือว่าปกติ
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       สร้างบัญชีตั้งต้น
+
+    ข้อความต้องกล่าวถึง    ${Message}    ${SUCCESS_KEYWORD}    ถูกใช้งานแล้ว    ซ้ำ
+
+กรณี TC02_F01
+    [Documentation]    สมัครสมาชิกด้วยข้อมูลที่ถูกต้องครบถ้วน กรอกครบทั้ง 2 ขั้นตอนแล้วกดสมัคร
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       สมัครสำเร็จ
+
+    Should Contain    ${Message}    ${SUCCESS_KEYWORD}
+    ...    msg=สมัครสมาชิกไม่สำเร็จ ระบบตอบกลับว่า "${Message}"
+
+กรณี TC02_F02
+    [Documentation]    ชื่อผู้ใช้ของบัญชีตั้งต้น + อีเมลใหม่ ระบบต้องปฏิเสธและแจ้งเรื่องชื่อผู้ใช้
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       ชื่อผู้ใช้ซ้ำ
+
+    ต้องสมัครไม่สำเร็จ     ${Message}
+    ข้อความต้องกล่าวถึง    ${Message}    ชื่อผู้ใช้    username
+
+กรณี TC02_F03
+    [Documentation]    อีเมลของบัญชีตั้งต้น + ชื่อผู้ใช้ใหม่ ระบบต้องปฏิเสธและแจ้งเรื่องอีเมล
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       อีเมลซ้ำ
+
+    ต้องสมัครไม่สำเร็จ     ${Message}
+    ข้อความต้องกล่าวถึง    ${Message}    อีเมล    email
+
+กรณี TC02_F04
+    [Documentation]    อีเมลไม่มีเครื่องหมาย @ ระบบต้องไม่ให้ไปขั้นตอนถัดไป
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       อีเมลผิดรูปแบบ
+
+    ต้องสมัครไม่สำเร็จ     ${Message}
+    ข้อความต้องกล่าวถึง    ${Message}    อีเมล    email
+
+กรณี TC02_F05
+    [Documentation]    เว้นว่างทุกช่องในขั้นตอนที่ 1 ระบบต้องแจ้งเตือนและไม่ให้ไปต่อ
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    Open Register Page
+    กรอกข้อมูลบัญชีผู้ใช้    ${Data}
+
+    ${Clicked}=     Click Next Button
+    ${Messages}=    Get Validation Messages
+    ${Count}=       Get Length    ${Messages}
+    ${Summary}=     รวมข้อความ    ${Messages}    ระบบไม่แสดงข้อความแจ้งเตือน
+
+    บันทึกผลที่ได้จริง    ${Summary}
+    เก็บภาพหลักฐาน       ไม่กรอกข้อมูล
+
+    Should Not Be True    ${Clicked}
+    ...    msg=ระบบยอมให้ไปขั้นตอนถัดไปทั้งที่ไม่ได้กรอกข้อมูล
+    Should Be True    ${Count} > 0
+    ...    msg=ระบบไม่แสดงข้อความแจ้งเตือนเมื่อไม่กรอกข้อมูล
+
+กรณี TC02_F06
+    [Documentation]    ผ่านขั้นตอนที่ 1 แต่เว้นข้อมูลส่วนตัวไว้ ระบบต้องไม่สมัครให้
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    Open Register Page
+    กรอกข้อมูลบัญชีผู้ใช้    ${Data}
+    ${Clicked}=    Click Next Button
+    Should Be True    ${Clicked}    ไม่สามารถผ่านขั้นตอนที่ 1 ได้
+
+    ${OnStep2}=    Is Register Step2 Displayed
+    Should Be True    ${OnStep2}    ระบบไม่ได้พาไปยังขั้นตอนที่ 2
+
+    ${Clicked}=     Click Register Button
+    ${Messages}=    Get Validation Messages
+    ${Summary}=     รวมข้อความ    ${Messages}    ปุ่มสมัครสมาชิกถูกปิดใช้งาน ระบบไม่สร้างบัญชี
+
+    บันทึกผลที่ได้จริง    ${Summary}
+    เก็บภาพหลักฐาน       ข้อมูลไม่ครบ
+
+    Should Not Be True    ${Clicked}
+    ...    msg=ระบบยอมให้กดสมัครสมาชิกทั้งที่ข้อมูลไม่ครบ
+
+กรณี TC02_F07
+    [Documentation]    เบอร์โทรของบัญชีตั้งต้น + ชื่อผู้ใช้และอีเมลใหม่ (เอกสารระบุว่าระบบตรวจเบอร์โทรซ้ำด้วย)
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    ${Message}=    ดำเนินการสมัครสมาชิก    ${Data}
+    บันทึกผลที่ได้จริง    ${Message}
+    เก็บภาพหลักฐาน       เบอร์โทรซ้ำ
+
+    ต้องสมัครไม่สำเร็จ     ${Message}
+    ข้อความต้องกล่าวถึง    ${Message}    เบอร์    โทรศัพท์    phone    tel
+
+กรณี TC02_F08
+    [Documentation]    กดย้อนกลับจากขั้นตอนที่ 2 ข้อมูลเดิมต้องยังอยู่ ไม่ต้องกรอกใหม่
+    [Arguments]    ${Data}    ${ExpectedResult}
+
+    Open Register Page
+    กรอกข้อมูลบัญชีผู้ใช้    ${Data}
+    ${Clicked}=    Click Next Button
+    Should Be True    ${Clicked}    ไม่สามารถผ่านขั้นตอนที่ 1 ได้
+
+    ${OnStep2}=    Is Register Step2 Displayed
+    Should Be True    ${OnStep2}    ระบบไม่ได้พาไปยังขั้นตอนที่ 2
+
+    Click Back Button
+    ${OnStep1}=    Is Element Visible    ${Text_RUsername}
+    Should Be True    ${OnStep1}    กดย้อนกลับแล้วระบบไม่ได้กลับมาขั้นตอนที่ 1
+
+    ${ValueUsername}=    Get Property    ${Text_RUsername}    value
+    ${ValueEmail}=       Get Property    ${Text_REmail}       value
+
+    บันทึกผลที่ได้จริง    กลับมาขั้นตอนที่ 1 | ชื่อผู้ใช้ที่พบ "${ValueUsername}" | อีเมลที่พบ "${ValueEmail}"
+    เก็บภาพหลักฐาน       ย้อนกลับ
+
+    Should Be Equal    ${ValueUsername}    ${Data}[UsernameR]
+    ...    msg=ชื่อผู้ใช้หายหลังกดย้อนกลับ (พบ "${ValueUsername}")
+    Should Be Equal    ${ValueEmail}    ${Data}[Email]
+    ...    msg=อีเมลหายหลังกดย้อนกลับ (พบ "${ValueEmail}")
+
+
+# =====================================================================
+# 7. ขั้นตอนย่อยของการสมัครสมาชิก
+# =====================================================================
+
+กรอกข้อมูลบัญชีผู้ใช้
+    [Documentation]    กรอกข้อมูลขั้นตอนที่ 1 (รูปโปรไฟล์ ชื่อผู้ใช้ อีเมล รหัสผ่าน)
+    [Arguments]    ${Data}
+    Upload Picture           ${Data}[Picture]
+    Input UsernameR          ${Data}[UsernameR]
+    Input Email              ${Data}[Email]
+    Input PasswordR          ${Data}[PasswordR]
+    Input Confirmpassword    ${Data}[Confirmpassword]
+
+    # ช่องสุดท้ายไม่มีช่องถัดไปมา blur ให้ ต้อง Tab ออกเองระบบจึงจะตรวจสอบ
+    Keyboard Key    press    Tab
+
+กรอกข้อมูลส่วนตัว
+    [Documentation]    กรอกข้อมูลขั้นตอนที่ 2 (ข้อมูลส่วนตัวและที่อยู่)
+    [Arguments]    ${Data}
+    Input Firstname    ${Data}[Firstname]
+    Input Surname      ${Data}[Surname]
+    Select Gender      ${Data}[Gender]
+    Input Birthdate    ${Data}[Daybirth]    ${Data}[Monthbirth]    ${Data}[Yearbirth]
+    Input Tel          ${Data}[Tel]
+    Input Hnum         ${Data}[Hnum]
+    Input Alley        ${Data}[Alley]
+    Input Group        ${Data}[Group]
+    Input District     ${Data}[District]
+    Input Canton       ${Data}[Canton]
+    Input Province     ${Data}[Province]
+    Input Postcode     ${Data}[Postcode]
+    Keyboard Key       press    Tab
+
+ดำเนินการสมัครสมาชิก
+    [Documentation]    หน้าสมัครมี 2 ขั้นตอน กรอกครบแล้วกดสมัคร คืนข้อความที่ระบบตอบกลับ
+    ...                ถ้าติดตั้งแต่ขั้นตอนที่ 1 จะคืนข้อความแจ้งเตือนที่พบแทน
+    [Arguments]    ${Data}
+
+    Open Register Page
+    กรอกข้อมูลบัญชีผู้ใช้    ${Data}
+
+    ${Clicked}=    Click Next Button
+    IF    not ${Clicked}
+        ${Messages}=    Get Validation Messages
+        ${Result}=      รวมข้อความ    ${Messages}    ไม่ผ่านขั้นตอนที่ 1 และไม่พบข้อความแจ้งเตือน
+        RETURN    ${Result}
     END
 
+    ${OnStep2}=    Is Register Step2 Displayed
+    IF    not ${OnStep2}
+        ${Messages}=    Get Validation Messages
+        ${Result}=      รวมข้อความ    ${Messages}    ไม่สามารถไปยังขั้นตอนที่ 2 ได้
+        RETURN    ${Result}
+    END
+
+    กรอกข้อมูลส่วนตัว    ${Data}
+
+    ${Clicked}=    Click Register Button
+    IF    not ${Clicked}
+        ${Messages}=    Get Validation Messages
+        ${Result}=      รวมข้อความ    ${Messages}    ปุ่มสมัครสมาชิกถูกปิดใช้งาน
+        RETURN    ${Result}
+    END
+
+    ${Registered}=    รอผลการสมัคร
+    ${RegLen}=        Get Length    ${Registered}
+    IF    ${RegLen} > 0
+        Log    ข้อความที่ระบบตอบกลับ : ${Registered}    level=INFO
+        RETURN    ${Registered}
+    END
+
+    ${Messages}=    Get Validation Messages
+    ${Result}=      รวมข้อความ    ${Messages}    ไม่พบทั้งข้อความแจ้งสำเร็จและข้อความแจ้งเตือน
+    Log    ข้อความที่ระบบตอบกลับ : ${Result}    level=INFO
+    RETURN    ${Result}
+
+รอผลการสมัคร
+    [Documentation]    รอ popup แจ้งสมัครสำเร็จสั้น ๆ คืนข้อความบน popup ถ้าไม่พบให้คืนข้อความว่าง
+    ...                รอสั้นเพราะกรณีที่ต้องไม่สำเร็จจะไม่มี popup ขึ้นเลย
+    ${Success}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Popup_Success}    visible    ${POPUP_TIMEOUT}
+    IF    not ${Success}    RETURN    ${EMPTY}
+
+    ${Text}=    Get Text        ${Popup_Success}
+    ${Text}=    Strip String    ${Text}
+    RETURN    ${Text}
+
+
+# =====================================================================
+# 8. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล และเก็บหลักฐาน
+# =====================================================================
+
+บันทึกผลที่ได้จริง
+    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ ให้ teardown เขียนลงคอลัมน์ ActualResult
+    [Arguments]    ${Text}
+    Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
+
+รวมข้อความ
+    [Documentation]    รวมข้อความในลิสต์เป็นข้อความเดียว ถ้าลิสต์ว่างให้ใช้ข้อความสำรอง
+    [Arguments]    ${Messages}    ${Fallback}
+    ${Count}=    Get Length    ${Messages}
+    IF    ${Count} == 0    RETURN    ${Fallback}
     ${Joined}=    Evaluate    " | ".join($Messages)
     RETURN    ${Joined}
 
+ต้องสมัครไม่สำเร็จ
+    [Documentation]    ยืนยันว่าระบบไม่ได้สมัครสมาชิกให้
+    [Arguments]    ${Message}
+    Should Not Contain    ${Message}    ${SUCCESS_KEYWORD}
+    ...    msg=ระบบสมัครสมาชิกสำเร็จ ทั้งที่ควรปฏิเสธ (ข้อความ "${Message}")
 
-# =====================================================================
-# ขั้นตอนการทดสอบหนึ่งกรณี
-# =====================================================================
+ข้อความต้องกล่าวถึง
+    [Documentation]    ยืนยันว่าข้อความที่ระบบตอบกลับมีคำที่เอกสารระบุไว้อย่างน้อยหนึ่งคำ
+    [Arguments]    ${Message}    @{Keywords}
+    ${Lower}=    Convert To Lower Case    ${Message}
+    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ใน comprehension
+    ${Matched}=    Evaluate    any(map(lambda k, t=$Lower: k.lower() in t, $Keywords))
+    Should Be True    ${Matched}
+    ...    msg=ข้อความ "${Message}" ไม่ได้กล่าวถึง ${Keywords} จึงไม่แน่ใจว่าระบบตอบด้วยเหตุผลที่ถูกต้อง
 
-Register_Farmer
-    [Arguments]
-    ...    ${Run}          ${TestCaseID}      ${TestScanario}      ${Picture}       ${UsernameR}
-    ...    ${Email}        ${PasswordR}       ${Confirmpassword}
-    ...    ${Firstname}    ${Surname}         ${Gender}
-    ...    ${Daybirth}     ${Monthbirth}      ${Yearbirth}         ${Tel}
-    ...    ${Hnum}         ${Alley}           ${Group}             ${District}
-    ...    ${Canton}       ${province}        ${Postcode}
-    ...    ${ExpectedResult}
-
-    # แถวสรุปผลท้ายชีตไม่มี TestCaseID จึงไม่ใช่กรณีทดสอบ
-    IF    '${TestCaseID}' == '${EMPTY}'
-        Skip    ไม่ใช่กรณีทดสอบ (แถวสรุปผลในไฟล์ Excel)
-    END
-
-    IF    '${Run}' != 'Yes'
-        Skip    ไม่ได้เลือกให้รัน (Run = ${Run})
-    END
-
-    Set Test Variable    ${TC_ID}    ${TestCaseID}
-    ${Row}=              Evaluate    int("${TestCaseID}".split("_")[1]) + 1
-    Set Test Variable    ${ROW_NUM}            ${Row}
-    Set Test Variable    ${RESULT_RECORDED}    ${False}
-    Log                  ${TestCaseID} : ${TestScanario}
-
-    Open Register Page
-
-    # ---------- ขั้นที่ 1 : ข้อมูลบัญชีผู้ใช้ ----------
-    Upload Picture           ${Picture}
-    Input UsernameR          ${UsernameR}
-    Input Email              ${Email}
-    Input PasswordR          ${PasswordR}
-    Input Confirmpassword    ${Confirmpassword}
-
-    # ช่องสุดท้ายของหน้าไม่มีช่องถัดไปให้กรอก จึงต้องสั่งออกจากช่องเอง
-    # ระบบตรวจสอบตอนออกจากช่อง (blur) เหมือนช่องอื่นที่ถูก blur อัตโนมัติเมื่อไปกรอกช่องถัดไป
-    Keyboard Key    press    Tab
-
-    ${Clicked}=    Click Next Button
-
-    ${Messages}=    Get Validation Messages
-    ${OnStep2}=     Is Register Step2 Displayed
-
-    # ---------- ขั้นที่ 2 : ข้อมูลส่วนตัว ----------
-    IF    ${OnStep2}
-        Input Firstname    ${Firstname}
-        Input Surname      ${Surname}
-        Select Gender      ${Gender}
-        Input Birthdate    ${Daybirth}    ${Monthbirth}    ${Yearbirth}
-        Input Tel          ${Tel}
-        Input Hnum         ${Hnum}
-        Input Alley        ${Alley}
-        Input Group        ${Group}
-        Input District     ${District}
-        Input Canton       ${Canton}
-        Input Province     ${province}
-        Input Postcode     ${Postcode}
-
-        # ช่องสุดท้ายของหน้าเช่นกัน ต้องออกจากช่องเพื่อให้ระบบตรวจสอบ
-        Keyboard Key    press    Tab
-
-        # ไม่กดปุ่มสมัครสมาชิก เพราะขอบเขตคือการตรวจสอบข้อมูลบนหน้าจอ ระบบแจ้งเตือนทันทีที่กรอก
-        # และการไม่ submit ทำให้ไม่มีการสร้างบัญชีจริง จึงไม่เกิดปัญหาชื่อผู้ใช้ซ้ำในเคสถัดไป
-        ${Messages}=    Get Validation Messages
-    END
-
-    # สถานะปุ่มใช้บันทึก log เท่านั้น ไม่นำมาตัดสินผล เพราะอาจถูกปิดจากฟิลด์อื่นที่ไม่ได้ทดสอบ
-    IF    not ${Clicked}
-        Log    ปุ่ม "ถัดไป" ถูกปิดใช้งาน (อาจมาจากฟิลด์อื่นในฟอร์ม)    level=INFO
-    END
-
-    # ---------- บันทึกผลลง Excel แล้วตัดสิน Pass/Fail ----------
-    ${ActualResult}=    Resolve Actual Result    ${Messages}    ${ExpectedResult}    ${TestCaseID}
-    ${ResultPF}=        Set Variable If    '${ActualResult}' == '${ExpectedResult}'    Pass    Fail
-    Record Test Result    ${Row}    ${ActualResult}    ${ResultPF}
-
-    Should Be Equal As Strings    ${ActualResult}    ${ExpectedResult}
-    ...    msg=${TestCaseID} (${TestScanario}) ไม่ผ่าน
+เก็บภาพหลักฐาน
+    [Documentation]    บันทึกภาพหน้าจอไว้เป็นหลักฐานประกอบรายงาน ตั้งชื่อเป็น <ยูสเคส>_<รหัส>_<คำอธิบาย>
+    [Arguments]    ${Name}
+    Run Keyword And Ignore Error
+    ...    Take Screenshot    ${EVIDENCE_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
