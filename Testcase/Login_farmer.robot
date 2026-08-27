@@ -26,8 +26,7 @@ Test Template     ดำเนินการกรณีทดสอบ
 # ---------- ที่อยู่ของไฟล์และโฟลเดอร์ ----------
 ${DATA_FILE}          ${CURDIR}/../TestData/Data.xlsx
 ${SHEET}              Login_Farmer
-${ERROR_DIR}          ${CURDIR}/../Error IMG
-${EVIDENCE_DIR}       ${CURDIR}/../Flow IMG
+${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot
 ${USECASE}            TC01_Login_Farmer
 
 # ---------- ตำแหน่งคอลัมน์ในชีต ----------
@@ -84,13 +83,11 @@ Login Farmer : ${TestCase}
 
 เปิดชุดทดสอบ
     [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
-    Create Directory    ${ERROR_DIR}
-    Create Directory    ${EVIDENCE_DIR}
-    ลบภาพของรอบก่อน    ${ERROR_DIR}
-    ลบภาพของรอบก่อน    ${EVIDENCE_DIR}
+    Create Directory    ${SCREENSHOT_DIR}
+    ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
 
     Open Excel Document    ${DATA_FILE}    Login
-    Open Login Browser
+    Open Test Browser
 
 ลบภาพของรอบก่อน
     [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่แตะภาพของยูสเคสอื่นที่อยู่โฟลเดอร์เดียวกัน
@@ -108,7 +105,7 @@ Login Farmer : ${TestCase}
     [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
     Run Keyword And Ignore Error    Save Excel Document    ${DATA_FILE}
     Run Keyword And Ignore Error    Close All Excel Documents
-    Close All Login Browsers
+    Close All Test Browsers
 
 เก็บผลท้ายกรณีทดสอบ
     [Documentation]    เก็บภาพเมื่อไม่ผ่าน เขียนผลกลับลง Excel แล้วปิด context
@@ -117,7 +114,7 @@ Login Farmer : ${TestCase}
 
     IF    '${TEST STATUS}' == 'FAIL'
         Run Keyword And Ignore Error
-        ...    Take Screenshot    ${ERROR_DIR}/${USECASE}_${TC_ID}    fullPage=True
+        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
 
         # กรณีที่ล้มก่อนได้ข้อความจากระบบ ให้บันทึกสาเหตุที่ล้มแทน
         ${Length}=    Get Length    ${ACTUAL_MESSAGE}
@@ -133,7 +130,7 @@ Login Farmer : ${TestCase}
     END
 
     # Ignore Error เพราะกรณีที่ถูกข้ามยังไม่มี context ถูกเปิด
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
 
 
 # =====================================================================
@@ -408,7 +405,7 @@ Login Farmer : ${TestCase}
     ...                เปิด context ใหม่ทุกครั้ง ให้การลองหลายรอบเริ่มจากสถานะสะอาดเสมอ
     [Arguments]    ${Username}    ${Password}
 
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
     Open Login Page
     Input Username    ${Username}
     Input Password    ${Password}
@@ -492,7 +489,7 @@ Login Farmer : ${TestCase}
     ${Username}=    Set Variable    locktest${Suffix}
     ${Tel}=         Evaluate    "09" + "".join(str(random.randint(0, 9)) for _ in range(8))    modules=random
 
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
     Open Register Page
 
     # ---------- ขั้นตอนที่ 1 : บัญชีและรหัสผ่าน ----------
@@ -529,7 +526,7 @@ Login Farmer : ${TestCase}
     Should Be True    ${Registered}    สมัครบัญชีสำหรับทดสอบไม่สำเร็จ (ไม่พบข้อความแจ้งสำเร็จ)
 
     Log    บัญชีที่สมัครขึ้นเพื่อทดสอบ : ${Username}    level=INFO
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
     RETURN    ${Username}
 
 
@@ -580,7 +577,7 @@ Login Farmer : ${TestCase}
     [Documentation]    บันทึกภาพหน้าจอไว้เป็นหลักฐานประกอบรายงาน ตั้งชื่อเป็น <ยูสเคส>_<รหัส>_<คำอธิบาย>
     [Arguments]    ${Name}
     Run Keyword And Ignore Error
-    ...    Take Screenshot    ${EVIDENCE_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
+    ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
 
 บันทึกรายชื่อปุ่มบนหน้า
     [Documentation]    บันทึกข้อความของปุ่มและลิงก์ทั้งหมดบนหน้า ใช้ตอนหา locator ที่ยังไม่ทราบ

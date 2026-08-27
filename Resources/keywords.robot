@@ -7,21 +7,9 @@ Resource          variables.robot
 
 *** Keywords ***
 #-------------------------------------------------------------------------
-# Login Farmer : เปิด browser process เดียว แล้วใช้ context ใหม่ในแต่ละกรณีทดสอบ
-Open Login Browser
-    New Browser            ${browser}    headless=${headless}
-    Set Browser Timeout    ${DEFAULT_TIMEOUT}
-    # ปิดภาพหน้าจออัตโนมัติ เพราะสคริปต์ถ่ายเองเมื่อเคสไม่ผ่าน (เก็บใน Error IMG)
-    Register Keyword To Run On Failure    None
-
-Close Login Context
-    Close Context
-
-Close All Login Browsers
-    Close Browser    ALL
-
+# Login Farmer
 Open Login Page
-    [Documentation]    เปิด context และหน้าเข้าสู่ระบบใหม่ (ต้องเรียก Open Login Browser ก่อน)
+    [Documentation]    เปิด context และหน้าเข้าสู่ระบบใหม่ (ต้องเรียก Open Test Browser ก่อน)
     New Context
     New Page                   ${Login_farmerURL}
     Set Viewport Size          ${VIEWPORT_WIDTH}    ${VIEWPORT_HEIGHT}
@@ -40,6 +28,21 @@ Click Verify Button
 
 #-------------------------------------------------------------------------
 # คีย์เวิร์ดช่วยเหลือทั่วไป
+Open Test Browser
+    [Documentation]    เปิด browser process เดียวต่อชุดทดสอบ แล้วใช้ context ใหม่ในแต่ละกรณีทดสอบ
+    New Browser            ${browser}    headless=${headless}
+    Set Browser Timeout    ${DEFAULT_TIMEOUT}
+    # ปิดภาพหน้าจออัตโนมัติ เพราะสคริปต์ถ่ายเองเมื่อเคสไม่ผ่าน และเคสที่ตั้งใจให้ล้มจะได้ภาพเปล่า ๆ ทั้งรันช้าลง
+    Register Keyword To Run On Failure    None
+
+Close Test Context
+    [Documentation]    ปิด context ของกรณีทดสอบที่เพิ่งจบ ให้กรณีถัดไปเริ่มจากสถานะสะอาด
+    Close Context
+
+Close All Test Browsers
+    [Documentation]    ปิดเบราว์เซอร์ทั้งหมดตอนจบชุดทดสอบ
+    Close Browser    ALL
+
 Is Element Visible
     [Documentation]    ตรวจว่า element แสดงอยู่ไหม ลด timeout ชั่วคราวไม่ให้รอครบ 30 วินาทีตอนไม่พบ
     [Arguments]    ${Selector}
@@ -65,19 +68,7 @@ Click Button If Enabled
     RETURN    ${Enabled}
 
 #-------------------------------------------------------------------------
-# Register Farmer : เปิด browser process เดียว แล้วใช้ context ใหม่ในแต่ละกรณีทดสอบ
-Open Register Browser
-    New Browser            ${browser}    headless=${headless}
-    Set Browser Timeout    ${DEFAULT_TIMEOUT}
-    # ปิดภาพหน้าจออัตโนมัติ เพราะสคริปต์ถ่ายเองแล้ว และเคสที่ตั้งใจให้ล้มจะได้ภาพเปล่า ๆ ทั้งรันช้าลง
-    Register Keyword To Run On Failure    None
-
-Close Register Context
-    Close Context
-
-Close All Register Browsers
-    Close Browser    ALL
-
+# Register Farmer
 # page1
 Open Register Page
     New Context
@@ -230,9 +221,14 @@ Open Search Equipment Page
     Wait For Elements State    ${Text_SearchEQ}     visible    ${DEFAULT_TIMEOUT}
 
 Select Equipment Type
-    [Documentation]    เลือกประเภทอุปกรณ์จาก dropdown ถ้าหาไม่เจอจะเตือนใน log แทนการล้ม เพราะเคสนี้สนใจการเพิ่มตะกร้าไม่ใช่ตัวกรอง
+    [Documentation]    เลือกประเภทอุปกรณ์จาก dropdown คืน True เมื่อกรองด้วยประเภทที่ระบุจริง ๆ
+    ...
+    ...                หน้าค้นหากรองด้วยประเภท "และ" ชื่ออุปกรณ์พร้อมกัน ถ้า dropdown ค้างอยู่ที่ประเภทอื่น
+    ...                อุปกรณ์ที่พิมพ์ค้นหาจะไม่ขึ้นบนหน้าจอเลย ค่าว่างจึงไม่ได้แปลว่า "ไม่ต้องแตะ dropdown"
+    ...                แต่แปลว่าให้เลือกตัวเลือกที่หมายถึงทุกประเภท เพื่อล้างตัวกรองของรอบก่อนออกก่อนค้นหา
+    ...
+    ...                หาประเภทที่ระบุไม่เจอจะเตือนใน log แทนการล้ม เพราะกรณีทดสอบสนใจผลการค้นหาไม่ใช่ตัวกรอง
     [Arguments]    ${Type}
-    IF    '${Type}' == '${EMPTY}'    RETURN    ${False}
 
     ${Ok}    ${Options}=    Run Keyword And Ignore Error    Get Select Options    ${Select_EQType}
     IF    '${Ok}' == 'FAIL'
@@ -240,16 +236,37 @@ Select Equipment Type
         RETURN    ${False}
     END
 
-    ${Labels}=     Evaluate    [str(o.get("label", "")).strip() for o in $Options]
+    ${Labels}=    Evaluate    [str(o.get("label", "")).strip() for o in $Options]
+
+    IF    '${Type}' == '${EMPTY}'
+        ล้างตัวกรองประเภทอุปกรณ์    ${Labels}
+        RETURN    ${False}
+    END
+
     # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ในเงื่อนไขของ comprehension
     ${Matched}=    Evaluate    next(filter(lambda l, t=$Type: l == t or t in l, $Labels), "")
 
     IF    '${Matched}' == '${EMPTY}'
-        Log    ไม่มีประเภท "${Type}" ใน dropdown (มี ${Labels}) จึงค้นหาจากชื่ออุปกรณ์อย่างเดียว    level=WARN
+        Log    ไม่มีประเภท "${Type}" ใน dropdown (มี ${Labels}) จึงล้างตัวกรองแล้วค้นหาจากชื่ออุปกรณ์อย่างเดียว    level=WARN
+        ล้างตัวกรองประเภทอุปกรณ์    ${Labels}
         RETURN    ${False}
     END
 
     Select Options By    ${Select_EQType}    label    ${Matched}
+    RETURN    ${True}
+
+ล้างตัวกรองประเภทอุปกรณ์
+    [Documentation]    เลือกตัวเลือกที่หมายถึง "ทุกประเภท" ใน dropdown เพื่อไม่ให้ตัวกรองบังผลการค้นหา
+    ...                ไม่มีตัวเลือกแบบนั้นก็ปล่อยไว้ตามค่าเริ่มต้นของหน้า แล้วบันทึกไว้ใน log
+    [Arguments]    ${Labels}
+    ${All}=    Evaluate    next((l for l in $Labels if "ทั้งหมด" in l or "ทุกประเภท" in l or l == ""), None)
+
+    IF    $All is None
+        Log    ไม่มีตัวเลือก "ทุกประเภท" ใน dropdown (มี ${Labels}) จึงปล่อยตัวกรองไว้ตามค่าเริ่มต้น    level=INFO
+        RETURN    ${False}
+    END
+
+    Select Options By    ${Select_EQType}    label    ${All}
     RETURN    ${True}
 
 Input Search Equipment
@@ -273,6 +290,15 @@ Get Found Count Text
     ${Found}=    Is Element Visible    ${Text_FoundCount}
     IF    not ${Found}    RETURN    ไม่พบข้อความสรุปผลการค้นหา
     ${Text}=    Get Text        ${Text_FoundCount}
+    ${Text}=    Strip String    ${Text}
+    RETURN    ${Text}
+
+Get Popup Title
+    [Documentation]    อ่านหัวข้อบนกล่องแจ้งเตือน SweetAlert2 ที่ระบบขึ้นมา ถ้าไม่มี popup คืนข้อความว่าง
+    ${Found}=    Is Element Visible    ${Popup_Title}
+    IF    not ${Found}    RETURN    ${EMPTY}
+
+    ${Text}=    Get Text        ${Popup_Title}
     ${Text}=    Strip String    ${Text}
     RETURN    ${Text}
 
@@ -362,3 +388,167 @@ Clear Cart
     Close Cart
     Log    ล้างของเดิมออกจากตะกร้า ${Removed} รายการ    level=INFO
     RETURN    ${Removed}
+
+#-------------------------------------------------------------------------
+# Booking Equipment Farmer : ฟอร์มจองอยู่ในกล่องตะกร้า ต้องเปิดกล่องไว้ก่อนจึงจะกรอกได้
+Is Booking Form Displayed
+    [Documentation]    ตรวจว่ากล่องตะกร้าแสดงฟอร์มจองแล้วหรือยัง ดูจากช่องวันที่เริ่มเช่า
+    ${Displayed}=    Is Element Visible    ${Text_StartDate}
+    RETURN    ${Displayed}
+
+Get Calendar Month
+    [Documentation]    อ่านหัวปฏิทิน (เช่น "สิงหาคม 2026") คืนเลขเดือนรวมปี (ปี*12+เดือน) ไว้เทียบกับเป้าหมาย
+    ...                คืน 0 เมื่ออ่านหัวปฏิทินไม่ได้ ให้ผู้เรียกตัดสินใจเองว่าจะเลิกเลื่อน
+    ${Header}=    Get Text        ${Cal_Header}
+    ${Header}=    Strip String    ${Header}
+
+    ${Parts}=    Split String    ${Header}
+    ${Count}=    Get Length      ${Parts}
+    IF    ${Count} < 2
+        Log    อ่านหัวปฏิทินไม่ได้ (ได้ "${Header}")    level=WARN
+        RETURN    ${0}
+    END
+
+    ${Month}=    Get From Dictionary    ${THAI_MONTHS}    ${Parts}[0]    default=${0}
+    IF    ${Month} == 0
+        Log    ไม่รู้จักชื่อเดือน "${Parts}[0]" บนหัวปฏิทิน    level=WARN
+        RETURN    ${0}
+    END
+
+    ${Year}=    เทียบปีให้เป็น ค.ศ.    ${Parts}[1]
+    ${Index}=   Evaluate    ${Year} * 12 + ${Month}
+    RETURN    ${Index}
+
+เทียบปีให้เป็น ค.ศ.
+    [Documentation]    ทำให้ปีที่อ่านมาอยู่ในระบบเดียวกันก่อนนำไปเทียบ ปีที่มากกว่า 2400 ถือว่าเป็น พ.ศ.
+    ...                เป็นจุดเดียวในโปรเจกต์ที่มีการบวกลบปี ที่อื่นใช้ค่าปีตามที่เขียนไว้ในไฟล์ทดสอบตรง ๆ
+    ...                หน้าเว็บจะแสดงหัวปฏิทินเป็น ค.ศ. หรือ พ.ศ. ก็ทำงานได้เหมือนกัน
+    [Arguments]    ${Year}
+    ${Year}=      Convert To Integer    ${Year}
+    ${Result}=    Evaluate    ${Year} - ${THAI_YEAR_OFFSET} if ${Year} > 2400 else ${Year}
+    RETURN    ${Result}
+
+Go To Calendar Month
+    [Documentation]    เลื่อนปฏิทินไปยังเดือนเป้าหมาย โดยอ่านหัวปฏิทินใหม่ทุกครั้งแทนการนับจำนวนคลิก
+    ...                ปฏิทินอาจเปิดที่เดือนของค่าเดิมในช่อง ไม่ใช่เดือนปัจจุบันเสมอไป
+    [Arguments]    ${TargetIndex}
+    FOR    ${Round}    IN RANGE    24
+        ${Now}=    Get Calendar Month
+        IF    ${Now} == 0            RETURN    ${False}
+        IF    ${Now} == ${TargetIndex}    RETURN    ${True}
+
+        ${Button}=    Set Variable If    ${Now} < ${TargetIndex}    ${Cal_NextMonth}    ${Cal_PrevMonth}
+        Click    ${Button}
+        Sleep    0.2s
+    END
+    Log    เลื่อนปฏิทินครบ 24 ครั้งแล้วยังไม่ถึงเดือนเป้าหมาย    level=WARN
+    RETURN    ${False}
+
+Pick Date From Calendar
+    [Documentation]    เปิดปฏิทินของช่องที่ระบุแล้วคลิกเลือกวันที่เป้าหมาย
+    ...                คืนค่าที่อ่านได้จากช่องเมื่อเลือกสำเร็จ / คืนข้อความบอกเหตุเมื่อเลือกไม่ได้
+    ...                ระบบปิดปุ่มวันที่ผิดเงื่อนไขไว้ (disabled) การเลือกไม่ได้จึงเป็นผลลัพธ์ที่ถูกต้อง ไม่ใช่ข้อผิดพลาด
+    [Arguments]    ${Field}    ${Day}    ${MonthIndex}    ${Display}
+
+    Click    ${Field}
+    ${Opened}=    Is Element Visible    ${Cal_TodayButton}
+    IF    not ${Opened}    RETURN    เปิดปฏิทินของช่องนี้ไม่ได้
+
+    Go To Calendar Month    ${MonthIndex}
+
+    ${Enabled}=    Set Variable    xpath=//button[not(@disabled)][.//span[normalize-space(text())='${Day}']]
+    ${AnyCell}=    Set Variable    xpath=//button[.//span[normalize-space(text())='${Day}']]
+
+    ${Clickable}=    Get Element Count    ${Enabled}
+    IF    ${Clickable} == 0
+        ${Total}=    Get Element Count    ${AnyCell}
+        RETURN    ระบบปิดวันที่ ${Display} ไม่ให้เลือก (พบปุ่มวันนี้ ${Total} ปุ่ม กดได้ 0 ปุ่ม)
+    END
+
+    Click    ${Enabled} >> nth=0
+    Sleep    0.3s
+    ${Value}=    Get Attribute    ${Field}    value
+    RETURN    ${Value}
+
+Input Booking Address
+    [Documentation]    กรอกที่อยู่จัดส่ง กรอกทุกครั้งแม้เป็นค่าว่างเพื่อให้ระบบตรวจสอบช่องนี้
+    [Arguments]    ${Address}
+    Fill Text    ${Text_BookAddress}    ${Address}
+
+Click Booking Button
+    [Documentation]    กดปุ่ม "สั่งจอง" คืน True เมื่อกดได้ / False เมื่อปุ่มถูกปิดใช้งาน
+    ${Clicked}=    Click Button If Enabled    ${Btn_Booking}
+    IF    ${Clicked}    Sleep    0.5s
+    RETURN    ${Clicked}
+
+Is Terms Popup Shown
+    [Documentation]    ตรวจว่า popup ข้อกำหนดการเช่าเด้งขึ้นมาแล้วหรือยัง ดูจากปุ่ม "ยอมรับ"
+    ...                popup นี้เด้งเฉพาะตอนข้อมูลผ่านการตรวจสอบ จึงใช้เป็นตัวชี้วัดว่าฟอร์มถูกต้อง
+    ${Shown}=    Is Element Visible    ${Btn_AcceptTerms}
+    RETURN    ${Shown}
+
+Accept Booking Terms
+    [Documentation]    ติ๊กยอมรับข้อกำหนดแล้วกดปุ่ม "ยอมรับ" คืน True เมื่อกดปุ่มได้
+    Check Checkbox    ${Check_Terms}
+    ${Clicked}=    Click Button If Enabled    ${Btn_AcceptTerms}
+    IF    ${Clicked}    Sleep    0.5s
+    RETURN    ${Clicked}
+
+#-------------------------------------------------------------------------
+# Return Equipment Farmer : ไม่มีการกรอกฟอร์ม เป็นคีย์เวิร์ด "เปิดหน้า - กดปุ่ม - ยืนยัน - อ่าน popup" ล้วน ๆ
+Open Return Equipment Page
+    [Documentation]    เปิดหน้ารายการส่งคืนอุปกรณ์ ต้องเข้าสู่ระบบไว้ก่อนจึงจะเห็นรายการของตนเอง
+    ...                ใช้ Go To แทนการเปิด context ใหม่ เพื่อไม่ให้เสียสถานะเข้าสู่ระบบที่เพิ่งทำไว้
+    Go To                  ${Return_farmerURL}
+    Wait For Load State    domcontentloaded    ${DEFAULT_TIMEOUT}
+    # หน้านี้ดึงรายการจองมาแสดงหลังโหลดหน้าเสร็จ จึงรอสั้น ๆ ก่อนเริ่มนับปุ่ม
+    Sleep    1s
+
+Get Returnable Item Count
+    [Documentation]    นับรายการที่อยู่ในสถานะพร้อมส่งคืน จากจำนวนปุ่ม "ส่งคืนอุปกรณ์" (หนึ่งรายการหนึ่งปุ่ม)
+    ...                ต้องรอปุ่มใบแรกก่อน เพราะ Get Element Count ไม่รอ element จะได้ 0 ถ้าหน้ายังวาดไม่เสร็จ
+    ${Found}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Btn_ReturnEQ} >> nth=0    visible    ${CARD_TIMEOUT}
+    IF    not ${Found}    RETURN    ${0}
+
+    ${Count}=    Get Element Count    ${Btn_ReturnEQ}
+    RETURN    ${Count}
+
+Click Return Equipment
+    [Documentation]    กดปุ่ม "ส่งคืนอุปกรณ์" ของรายการแรก คืน True เมื่อกดได้
+    ${Clicked}=    Click Button If Enabled    ${Btn_ReturnEQ} >> nth=0
+    IF    ${Clicked}    Sleep    0.5s
+    RETURN    ${Clicked}
+
+Is Return Confirm Popup Shown
+    [Documentation]    ตรวจว่า popup ยืนยันการส่งคืนเด้งขึ้นมาแล้วหรือยัง ดูจากปุ่ม "ยืนยัน"
+    ...                popup นี้เด้งเฉพาะตอนรายการอยู่ในสถานะที่ส่งคืนได้ จึงใช้เป็นตัวชี้วัดว่าระบบยอมให้คืน
+    ${Shown}=    Is Element Visible    ${Btn_ConfirmReturn}
+    RETURN    ${Shown}
+
+Confirm Return Equipment
+    [Documentation]    กดปุ่ม "ยืนยัน" บน popup แล้วรอ popup ผลลัพธ์ คืนข้อความที่ระบบตอบกลับ
+    ...                ต้องรอหัวข้อเปลี่ยนก่อน เพราะ popup ยืนยันกับ popup ผลลัพธ์ใช้ id เดียวกัน จะอ่านได้หัวข้อเดิม
+    ${Before}=     Get Popup Title
+    ${Clicked}=    Click Button If Enabled    ${Btn_ConfirmReturn}
+    IF    not ${Clicked}    RETURN    ปุ่มยืนยันการส่งคืนถูกปิดใช้งาน ระบบไม่ให้ทำรายการ
+
+    ${After}=    Wait For Popup Title Change    ${Before}
+    RETURN    ${After}
+
+Wait For Popup Title Change
+    [Documentation]    รอจนหัวข้อบน popup เปลี่ยนไปจากค่าเดิม คืนหัวข้อใหม่
+    ...                รอครบแล้วยังไม่เปลี่ยนคืนค่าเดิม ให้ผู้เรียกตัดสินเองว่าถือเป็นผลลัพธ์หรือข้อผิดพลาด
+    [Arguments]    ${Previous}
+    FOR    ${Round}    IN RANGE    20
+        Sleep    0.3s
+        ${Now}=    Get Popup Title
+        IF    '${Now}' != '${Previous}'    RETURN    ${Now}
+    END
+    Log    รอครบ 20 รอบแล้วหัวข้อบน popup ยังเป็น "${Previous}" เหมือนเดิม    level=WARN
+    RETURN    ${Previous}
+
+Dismiss Popup
+    [Documentation]    ปิด popup ด้วยปุ่ม Escape ใช้แทนการกดยกเลิก เพราะข้อความบนปุ่มยกเลิกต่างกันในแต่ละ popup
+    Run Keyword And Ignore Error    Keyboard Key    press    Escape
+    Sleep    0.5s

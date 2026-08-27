@@ -27,8 +27,7 @@ Test Template     ดำเนินการกรณีทดสอบ
 # ---------- ที่อยู่ของไฟล์และโฟลเดอร์ ----------
 ${DATA_FILE}      ${CURDIR}/../TestData/Data.xlsx
 ${SHEET}          AddCart_Farmer
-${ERROR_DIR}      ${CURDIR}/../Error IMG
-${EVIDENCE_DIR}   ${CURDIR}/../Flow IMG
+${SCREENSHOT_DIR}    ${CURDIR}/../Screenshot
 ${USECASE}        TC03_AddCart_Farmer
 
 # ---------- ตำแหน่งคอลัมน์ในชีต ----------
@@ -58,13 +57,11 @@ Add Cart Farmer : ${TestCase}
 
 เปิดชุดทดสอบ
     [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
-    Create Directory    ${ERROR_DIR}
-    Create Directory    ${EVIDENCE_DIR}
-    ลบภาพของรอบก่อน    ${ERROR_DIR}
-    ลบภาพของรอบก่อน    ${EVIDENCE_DIR}
+    Create Directory    ${SCREENSHOT_DIR}
+    ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
 
     Open Excel Document    ${DATA_FILE}    AddCart
-    Open Login Browser
+    Open Test Browser
 
 ลบภาพของรอบก่อน
     [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่แตะภาพของยูสเคสอื่นที่อยู่โฟลเดอร์เดียวกัน
@@ -82,7 +79,7 @@ Add Cart Farmer : ${TestCase}
     [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
     Run Keyword And Ignore Error    Save Excel Document    ${DATA_FILE}
     Run Keyword And Ignore Error    Close All Excel Documents
-    Close All Login Browsers
+    Close All Test Browsers
 
 เก็บผลท้ายกรณีทดสอบ
     [Documentation]    เก็บภาพเมื่อไม่ผ่าน เขียนผลกลับลง Excel แล้วปิด context
@@ -91,7 +88,7 @@ Add Cart Farmer : ${TestCase}
 
     IF    '${TEST STATUS}' == 'FAIL'
         Run Keyword And Ignore Error
-        ...    Take Screenshot    ${ERROR_DIR}/${USECASE}_${TC_ID}    fullPage=True
+        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
 
         # กรณีที่ล้มก่อนได้ข้อความจากระบบ ให้บันทึกสาเหตุที่ล้มแทน
         ${Length}=    Get Length    ${ACTUAL_MESSAGE}
@@ -107,7 +104,7 @@ Add Cart Farmer : ${TestCase}
     END
 
     # Ignore Error เพราะกรณีที่ถูกข้ามยังไม่มี context ถูกเปิด
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
 
 
 # =====================================================================
@@ -348,16 +345,24 @@ Add Cart Farmer : ${TestCase}
     ...    msg=ค้นหา "${Data}[EquipmentName]" แล้วไม่พบอุปกรณ์ จึงยังทดสอบการกันผู้ใช้ที่ยังไม่เข้าสู่ระบบไม่ได้
 
     ${Clicked}=    Click Add To Cart
-    ${Url}=        Get Url
-    ${Count}=      เปิดตะกร้าและนับรายการ
+    # ระบบกันด้วย popup ซึ่งคลุมทั้งหน้าจอ จึงอ่าน popup แทนการเปิดตะกร้า
+    # ถ้าไปกดปุ่มตะกร้าจะโดนบังจนกดไม่ลงและรอจน timeout 30 วินาที
+    ${Message}=     Get Popup Title
+    ${HasPopup}=    Is Element Visible    ${Btn_LoginPopup}
+    ${Url}=         Get Url
     เก็บภาพหลักฐาน    หลังกดเพิ่มแบบยังไม่เข้าสู่ระบบ
 
     ${Redirected}=    Evaluate    "login" in $Url
-    บันทึกผลที่ได้จริง    กดปุ่มได้ = ${Clicked} | หน้าปัจจุบัน ${Url} | ในตะกร้ามี ${Count} รายการ
+    ${Detail}=        Set Variable If    '${Message}' != '${EMPTY}'    ${Message}
+    ...    กดปุ่มได้ = ${Clicked} | หน้าปัจจุบัน ${Url}
+    บันทึกผลที่ได้จริง    ${Detail}
 
-    ${Prevented}=    Evaluate    (not ${Clicked}) or ${Redirected} or ${Count} == 0
+    ${Prevented}=    Evaluate    ${HasPopup} or (not ${Clicked}) or ${Redirected}
     Should Be True    ${Prevented}
-    ...    msg=ระบบยอมให้เพิ่มอุปกรณ์ลงตะกร้าได้ ทั้งที่ผู้ใช้ยังไม่ได้เข้าสู่ระบบ
+    ...    msg=ระบบยอมให้เพิ่มอุปกรณ์ลงตะกร้าได้ ทั้งที่ผู้ใช้ยังไม่ได้เข้าสู่ระบบ (${Detail})
+
+    # ยืนยันว่า popup ที่ขึ้นมาพูดเรื่องเข้าสู่ระบบจริง ไม่ใช่ข้อความอื่น
+    IF    ${HasPopup}    ข้อความต้องกล่าวถึง    ${Message}    เข้าสู่ระบบ
 
 กรณี TC03_F06
     [Documentation]    ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
@@ -446,7 +451,7 @@ Add Cart Farmer : ${TestCase}
     [Documentation]    ยูสเคสนี้ต้องเข้าสู่ระบบก่อน จึงเข้าสู่ระบบแล้วกดเข้าหน้าค้นหาอุปกรณ์
     [Arguments]    ${Data}
 
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
     Open Login Page
 
     # เผื่อหน้าเว็บเรียก confirm ของเบราว์เซอร์ ถ้าไม่ตอบไว้ก่อนสคริปต์จะค้างรอจนหมดเวลา
@@ -469,7 +474,7 @@ Add Cart Farmer : ${TestCase}
 
 เปิดหน้าค้นหาอุปกรณ์โดยไม่เข้าสู่ระบบ
     [Documentation]    เปิด context ใหม่ที่ยังไม่ได้เข้าสู่ระบบ แล้วเข้าหน้าค้นหาอุปกรณ์จากหน้าแรกของเว็บ
-    Run Keyword And Ignore Error    Close Login Context
+    Run Keyword And Ignore Error    Close Test Context
 
     New Context
     New Page             ${Base_URL}
@@ -526,4 +531,4 @@ Add Cart Farmer : ${TestCase}
     [Documentation]    บันทึกภาพหน้าจอไว้เป็นหลักฐานประกอบรายงาน ตั้งชื่อเป็น <ยูสเคส>_<รหัส>_<คำอธิบาย>
     [Arguments]    ${Name}
     Run Keyword And Ignore Error
-    ...    Take Screenshot    ${EVIDENCE_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
+    ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
