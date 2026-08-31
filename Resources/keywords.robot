@@ -552,3 +552,309 @@ Dismiss Popup
     [Documentation]    ปิด popup ด้วยปุ่ม Escape ใช้แทนการกดยกเลิก เพราะข้อความบนปุ่มยกเลิกต่างกันในแต่ละ popup
     Run Keyword And Ignore Error    Keyboard Key    press    Escape
     Sleep    0.5s
+
+#-------------------------------------------------------------------------
+# Register Owner : โครงเหมือนฝั่ง Farmer ต่างที่ selector จึงแยกคีย์เวิร์ดไว้คนละชุด
+# page1
+Open Register Owner Page
+    New Context
+    New Page                   ${Register_ownerURL}
+    Set Viewport Size          ${VIEWPORT_WIDTH}    ${VIEWPORT_HEIGHT}
+    Wait For Elements State    ${Text_ROUsername}    visible    ${DEFAULT_TIMEOUT}
+
+Upload Owner Picture
+    [Arguments]    ${Picture}
+    IF    '${Picture}' != '${EMPTY}'
+        Upload File By Selector    ${Img_Owner}    ${TestDataDir}/${Picture}
+    END
+
+Input Owner UsernameR
+    [Arguments]    ${UsernameR}
+    Fill Text    ${Text_ROUsername}    ${UsernameR}
+
+Input Owner Email
+    [Arguments]    ${Email}
+    Fill Text    ${Text_ROEmail}    ${Email}
+
+Input Owner PasswordR
+    [Arguments]    ${PasswordR}
+    Fill Text    ${Text_ROPassword}    ${PasswordR}
+
+Input Owner Confirmpassword
+    [Arguments]    ${Confirmpassword}
+    Fill Text    ${Text_ROConfirmPassword}    ${Confirmpassword}
+
+# page2
+Is Register Owner Step2 Displayed
+    [Documentation]    ตรวจว่าถึงขั้นตอนที่ 2 (ข้อมูลส่วนตัว) หรือยัง ดูจากช่อง "ชื่อจริง" ของฝั่ง Owner
+    ${Displayed}=    Is Element Visible    ${Text_OName}
+    RETURN    ${Displayed}
+
+Input Owner Firstname
+    [Arguments]    ${Firstname}
+    Fill Text    ${Text_OName}    ${Firstname}
+
+Input Owner Surname
+    [Arguments]    ${Surname}
+    Fill Text    ${Text_OLName}    ${Surname}
+
+Select Owner Gender
+    [Arguments]    ${Gender}
+    IF    '${Gender}' == 'ชาย'
+        Select Options By    ${Select_OGender}    value    male
+    ELSE IF    '${Gender}' == 'หญิง'
+        Select Options By    ${Select_OGender}    value    female
+    ELSE
+        # ไม่เลือกเพศ : ต้องเข้าช่องแล้วออกเอง ระบบจึงเตือน (select ไม่ถูกแตะอัตโนมัติเหมือน Fill Text)
+        Focus    ${Select_OGender}
+        Focus    ${Text_OPhone}
+    END
+
+Input Owner Birthdate
+    [Arguments]    ${Daybirth}    ${Monthbirth}    ${Yearbirth}
+    # กรอกทุกช่องแม้ค่าว่างเพื่อให้ระบบเตือน ปีในไฟล์ทดสอบเป็น พ.ศ. อยู่แล้วจึงกรอกตรง ๆ
+    Fill Text    ${Date_Birth}    ${Daybirth}
+    Fill Text    ${Date_Month}    ${Monthbirth}
+    Fill Text    ${Date_Year}     ${Yearbirth}
+
+Input Owner Tel
+    [Arguments]    ${Tel}
+    Fill Text    ${Text_OPhone}    ${Tel}
+
+Input Owner Hnum
+    [Arguments]    ${Hnum}
+    Fill Text    ${Text_ONum}    ${Hnum}
+
+Input Owner Alley
+    [Arguments]    ${Alley}
+    Fill Text    ${Text_OAlley}    ${Alley}
+
+Input Owner Group
+    [Arguments]    ${Group}
+    Fill Text    ${Text_OMoo}    ${Group}
+
+Input Owner District
+    [Arguments]    ${District}
+    Fill Text    ${Text_OSubdistric}    ${District}
+
+Input Owner Canton
+    [Arguments]    ${Canton}
+    Fill Text    ${Text_ODistric}    ${Canton}
+
+Input Owner Province
+    [Arguments]    ${province}
+    Fill Text    ${Text_OProvince}    ${province}
+
+Input Owner Postcode
+    [Arguments]    ${Postcode}
+    Fill Text    ${Text_OPostcode}    ${Postcode}
+
+#-------------------------------------------------------------------------
+# Login Owner
+Open Login Owner Page
+    [Documentation]    เปิด context และหน้าเข้าสู่ระบบของเจ้าของอุปกรณ์ใหม่ (ต้องเรียก Open Test Browser ก่อน)
+    New Context
+    New Page                   ${Login_ownerURL}
+    Set Viewport Size          ${VIEWPORT_WIDTH}    ${VIEWPORT_HEIGHT}
+    Wait For Elements State    ${Text_OUsername}    visible    ${DEFAULT_TIMEOUT}
+
+Input Owner Username
+    [Arguments]    ${Username}
+    Fill Text    ${Text_OUsername}    ${Username}
+
+Input Owner Password
+    [Arguments]    ${Password}
+    Fill Text    ${Text_OPassword}    ${Password}
+
+Click Owner Login Button
+    [Documentation]    กดปุ่ม "เข้าสู่ระบบ" คืน True เมื่อกดได้ / False เมื่อปุ่มถูกปิดใช้งาน
+    ${Clicked}=    Click Button If Enabled    ${Btn_OLogin}
+    RETURN    ${Clicked}
+
+#-------------------------------------------------------------------------
+# Add Equipment Owner : ฟอร์มเปิดจากปุ่มบนหน้ารายการอุปกรณ์ ไม่ได้เข้าจาก URL ตรง ๆ
+Open Add Equipment Page
+    [Documentation]    เปิดหน้ารายการอุปกรณ์แล้วกดปุ่ม "เพิ่มอุปกรณ์" ให้ฟอร์มแสดงขึ้นมา
+    ...                ใช้ Go To ไม่ใช่ New Context เพื่อไม่ให้เสียสถานะเข้าสู่ระบบที่ทำไว้ตอนเปิดชุดทดสอบ
+    Go To                      ${AddEQ_ownerURL}
+    Wait For Load State        domcontentloaded    ${DEFAULT_TIMEOUT}
+    Wait For Elements State    ${Btn_AddEQ}        visible    ${DEFAULT_TIMEOUT}
+    Click                      ${Btn_AddEQ}
+    Wait For Elements State    ${Text_EQName}      visible    ${DEFAULT_TIMEOUT}
+
+Is Equipment Form Displayed
+    [Documentation]    ตรวจว่าฟอร์มเพิ่มอุปกรณ์ยังเปิดอยู่ไหม ดูจากช่อง "ชื่ออุปกรณ์"
+    ...                ฟอร์มปิดลงหลังบันทึกสำเร็จ จึงใช้เป็นตัวชี้วัดว่าระบบรับข้อมูลแล้ว
+    ${Displayed}=    Is Element Visible    ${Text_EQName}
+    RETURN    ${Displayed}
+
+Input Equipment Name
+    [Arguments]    ${EquipmentName}
+    Fill Text    ${Text_EQName}    ${EquipmentName}
+
+Input Equipment Detail
+    [Arguments]    ${EquipmentDetail}
+    Fill Text    ${Text_EQDetail}    ${EquipmentDetail}
+
+Input Equipment Price
+    [Arguments]    ${Price}
+    Fill Text    ${Text_EQPrice}    ${Price}
+
+Select Equipment Status
+    [Documentation]    เลือกสถานะจากข้อความที่ผู้ใช้เห็นบนหน้าจอ (พร้อมให้เช่า / ไม่พร้อมให้เช่า / ถูกจอง)
+    ...                ค่าว่างหมายถึงไม่เลือกสถานะ ต้องเข้าช่องแล้วออกเอง ระบบจึงจะเตือน
+    [Arguments]    ${Status}
+    IF    '${Status}' == '${EMPTY}'
+        Focus    ${Select_EQStatus}
+        Focus    ${Text_EQFeature}
+        RETURN
+    END
+
+    ${Ok}    ${Options}=    Run Keyword And Ignore Error    Get Select Options    ${Select_EQStatus}
+    IF    '${Ok}' == 'FAIL'
+        Log    ไม่พบ dropdown สถานะอุปกรณ์ จึงข้ามการเลือกสถานะ    level=WARN
+        RETURN
+    END
+
+    ${Labels}=    Evaluate    [str(o.get("label", "")).strip() for o in $Options]
+    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ในเงื่อนไขของ comprehension
+    ${Matched}=    Evaluate    next(filter(lambda l, s=$Status: l == s, $Labels), "")
+    IF    '${Matched}' == '${EMPTY}'
+        Log    ไม่มีสถานะ "${Status}" ใน dropdown (มี ${Labels}) จึงไม่เลือกสถานะ    level=WARN
+        RETURN
+    END
+    Select Options By    ${Select_EQStatus}    label    ${Matched}
+
+Input Equipment Feature
+    [Arguments]    ${EquipmentFeature}
+    Fill Text    ${Text_EQFeature}    ${EquipmentFeature}
+
+Input Equipment Address
+    [Arguments]    ${EquipmentAddress}
+    Fill Text    ${Text_EQAddress}    ${EquipmentAddress}
+
+Upload Equipment Picture
+    [Arguments]    ${Picture}
+    IF    '${Picture}' != '${EMPTY}'
+        Upload File By Selector    ${Img_EQ}    ${TestDataDir}/${Picture}
+    END
+
+Click Save Equipment Button
+    [Documentation]    กดปุ่ม "บันทึก" คืน True เมื่อกดได้ / False เมื่อปุ่มถูกปิดใช้งาน
+    ${Clicked}=    Click Button If Enabled    ${Btn_SaveEQ}
+    RETURN    ${Clicked}
+
+Click Cancel Equipment Button
+    [Documentation]    กดปุ่ม "ยกเลิก" เพื่อปิดฟอร์ม ใช้ Ignore Error เพราะบางกรณีฟอร์มปิดไปแล้ว
+    Run Keyword And Ignore Error    Click    ${Btn_CancelEQ}
+
+#-------------------------------------------------------------------------
+# Approve Booking Owner : หน้ารายการจองของเจ้าของอุปกรณ์
+# กลไกของหน้าคือ "เลือกแท็บสถานะ - กดปุ่มอัปเดตหรือยกเลิก - ยืนยันในกล่องโต้ตอบ - อ่านผล - กดตกลง"
+Open Owner Booking Page
+    [Documentation]    เปิดหน้ารายการจองที่เข้ามา ต้องเข้าสู่ระบบเป็น Owner ไว้ก่อน
+    ...                ใช้ Go To ไม่ใช่ New Context เพื่อไม่ให้เสียสถานะเข้าสู่ระบบ
+    Go To                  ${ApproveBooking_ownerURL}
+    Wait For Load State    domcontentloaded    ${DEFAULT_TIMEOUT}
+    # หน้านี้ดึงรายการจองมาแสดงหลังโหลดหน้าเสร็จ จึงรอสั้น ๆ ก่อนเริ่มนับรายการ
+    Sleep    1s
+
+Select Booking Tab
+    [Documentation]    กดแท็บกรองตามสถานะ คืน True เมื่อกดได้
+    ...                ไม่พบแท็บไม่ถือว่าล้ม เพราะบางหน้าจออาจไม่มีแท็บนั้นเมื่อไม่มีรายการในสถานะนั้น
+    [Arguments]    ${Tab}
+    ${Found}=    Is Element Visible    ${Tab}
+    IF    not ${Found}
+        Log    ไม่พบแท็บ ${Tab} บนหน้ารายการจอง    level=WARN
+        RETURN    ${False}
+    END
+    Click    ${Tab}
+    Sleep    1s
+    RETURN    ${True}
+
+Get Updatable Booking Count
+    [Documentation]    นับรายการที่ยังอัปเดตสถานะได้ จากจำนวนปุ่ม "อัปเดตเป็น ..." (หนึ่งรายการหนึ่งปุ่ม)
+    ...                ต้องรอปุ่มใบแรกก่อน เพราะ Get Element Count ไม่รอ element จะได้ 0 ถ้าหน้ายังวาดไม่เสร็จ
+    ${Found}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Btn_UpdateBookingStatus} >> nth=0    visible    ${CARD_TIMEOUT}
+    IF    not ${Found}    RETURN    ${0}
+
+    ${Count}=    Get Element Count    ${Btn_UpdateBookingStatus}
+    RETURN    ${Count}
+
+Get Next Status Label
+    [Documentation]    อ่านข้อความบนปุ่มอัปเดตของรายการแรก เช่น อัปเดตเป็น "รอการชำระเงิน"
+    ...                ใช้บันทึกลงรายงานว่าระบบกำลังจะเลื่อนไปสถานะใด
+    ${Found}=    Is Element Visible    ${Btn_UpdateBookingStatus} >> nth=0
+    IF    not ${Found}    RETURN    ${EMPTY}
+    ${Text}=    Get Text        ${Btn_UpdateBookingStatus} >> nth=0
+    ${Text}=    Strip String    ${Text}
+    ${Text}=    Evaluate    " ".join($Text.split())
+    RETURN    ${Text}
+
+Click Update Booking Status
+    [Documentation]    กดปุ่มอัปเดตสถานะของรายการแรก คืน True เมื่อกดได้
+    ${Clicked}=    Click Button If Enabled    ${Btn_UpdateBookingStatus} >> nth=0
+    IF    ${Clicked}    Sleep    0.5s
+    RETURN    ${Clicked}
+
+Click Cancel Booking
+    [Documentation]    กดปุ่ม "ยกเลิกการจอง" ของรายการแรก คืน True เมื่อกดได้
+    ${Clicked}=    Click Button If Enabled    ${Btn_CancelBooking} >> nth=0
+    IF    ${Clicked}    Sleep    0.5s
+    RETURN    ${Clicked}
+
+Is Booking Dialog Shown
+    [Documentation]    ตรวจว่ากล่องโต้ตอบเด้งขึ้นมาแล้วหรือยัง ดูจากเนื้อความในกล่อง
+    ${Shown}=    Is Element Visible    ${Popup_DialogText}
+    RETURN    ${Shown}
+
+Get Booking Dialog Text
+    [Documentation]    อ่านเนื้อความบนกล่องโต้ตอบ ใช้เป็น ActualResult
+    ...                กล่องยืนยันกับกล่องผลลัพธ์ใช้ id เดียวกัน จึงต้องอ่านหลังกดยืนยันแล้วเท่านั้น
+    ${Found}=    Is Element Visible    ${Popup_DialogText}
+    IF    not ${Found}    RETURN    ${EMPTY}
+    ${Text}=    Get Text        ${Popup_DialogText}
+    ${Text}=    Strip String    ${Text}
+    ${Text}=    Evaluate    " ".join($Text.split())
+    RETURN    ${Text}
+
+Confirm Booking Update
+    [Documentation]    กดปุ่ม "ยืนยัน" ในกล่องโต้ตอบ แล้วรอเนื้อความเปลี่ยนเป็นผลลัพธ์ คืนข้อความที่อ่านได้
+    ${Before}=    Get Booking Dialog Text
+    ${Clicked}=    Click Button If Enabled    ${Btn_ConfirmUpdate}
+    IF    not ${Clicked}    RETURN    ปุ่มยืนยันถูกปิดใช้งาน ระบบไม่ให้ทำรายการ
+
+    ${After}=    Wait For Booking Dialog Change    ${Before}
+    RETURN    ${After}
+
+Confirm Booking Cancellation
+    [Documentation]    กดปุ่ม "ยืนยันยกเลิก" ในกล่องโต้ตอบ แล้วรอเนื้อความเปลี่ยนเป็นผลลัพธ์
+    ${Before}=    Get Booking Dialog Text
+    ${Clicked}=    Click Button If Enabled    ${Btn_ConfirmCancelBooking}
+    IF    not ${Clicked}    RETURN    ปุ่มยืนยันยกเลิกถูกปิดใช้งาน ระบบไม่ให้ทำรายการ
+
+    ${After}=    Wait For Booking Dialog Change    ${Before}
+    RETURN    ${After}
+
+Wait For Booking Dialog Change
+    [Documentation]    รอจนเนื้อความในกล่องโต้ตอบเปลี่ยนไปจากค่าเดิม คืนเนื้อความใหม่
+    ...                รอครบแล้วยังไม่เปลี่ยนคืนค่าเดิม ให้ผู้เรียกตัดสินเองว่าถือเป็นผลลัพธ์หรือข้อผิดพลาด
+    [Arguments]    ${Previous}
+    FOR    ${Round}    IN RANGE    20
+        Sleep    0.3s
+        ${Now}=    Get Booking Dialog Text
+        IF    '${Now}' != '${Previous}'    RETURN    ${Now}
+    END
+    Log    รอครบ 20 รอบแล้วเนื้อความในกล่องโต้ตอบยังเป็น "${Previous}" เหมือนเดิม    level=WARN
+    RETURN    ${Previous}
+
+Dismiss Booking Dialog
+    [Documentation]    ปิดกล่องโต้ตอบด้วยปุ่มยกเลิกของกล่อง ใช้เมื่อไม่ต้องการทำรายการต่อ
+    Run Keyword And Ignore Error    Click Button If Enabled    ${Btn_DismissDialog}
+    Sleep    0.3s
+
+Acknowledge Booking Dialog
+    [Documentation]    กดปุ่ม "ตกลง" ปิดกล่องผลลัพธ์ ให้กรณีถัดไปเริ่มจากหน้าที่ไม่มีกล่องค้าง
+    Run Keyword And Ignore Error    Click Button If Enabled    ${Btn_AcknowledgeDialog}
+    Sleep    0.3s
