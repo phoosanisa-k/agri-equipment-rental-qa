@@ -22,8 +22,9 @@ ${Text_Username}    //input[@placeholder='กรอกชื่อผู้ใ�
 ${Text_Password}    //input[@placeholder='กรอกรหัสผ่าน']
 ${Btn_Login}        //button[@type='submit']
 ${Btn_Verify}       //button[contains(text(),'ตกลง')]
-# ยังไม่ทราบข้อความบนปุ่มออกจากระบบแน่ชัด จึงใช้ regex ครอบคำที่เป็นไปได้ไว้ก่อน
-${Btn_Logout}       text=/ออกจากระบบ|ลงชื่อออก|logout|sign out/i
+# ปุ่มโปรไฟล์บนหัวเว็บ กดแล้วเมนูออกจากระบบจึงจะเด้งลงมา ใช้ร่วมกันทั้งฝั่ง Farmer และ Owner
+${Btn_UserProfile}    //button[@type='button'][contains(.,'ชื่อผู้ใช้')]
+${Btn_Logout}       //button[contains(text(),'ออกจากระบบ')]
  
 #-------------------------------------------------------------------------
 #Register Farmer Usecase
@@ -214,14 +215,16 @@ ${ApproveBooking_ownerURL}     ${Base_URL}/owner/bookings
  
 # แท็บกรองตามสถานะ : ต้องเทียบข้อความแบบตรงตัว ไม่ใช่ contains
 # เพราะปุ่ม อัปเดตเป็น "รอการชำระเงิน" ก็มีคำว่า "รอการชำระเงิน" อยู่ด้วย จะจับปนกัน
-${Tab_BookingPending}          //button[normalize-space(text())='รอดำเนินการ']
-${Tab_BookingWaitPayment}      //button[normalize-space(text())='รอการชำระเงิน']
+# ใช้ . แทน text() เพราะแท็บอาจมีไอคอนหรือตัวเลขนับอยู่ข้างใน
+${Tab_BookingPending}          //button[contains(.,'รอดำเนินการ') and not(contains(.,'อัปเดต'))]
+${Tab_BookingWaitPayment}      //button[contains(.,'รอการชำระเงิน') and not(contains(.,'อัปเดต'))]
  
 # ปุ่มอัปเดตสถานะบนการ์ดรายการจอง ข้อความบนปุ่มบอกสถานะขั้นถัดไป
-${Btn_UpdateToWaitPayment}     //button[contains(text(),'อัปเดตเป็น "รอการชำระเงิน"')]
-${Btn_UpdateToApprovePayment}  //button[contains(text(),'อัปเดตเป็น "อนุมัติการชำระเงิน"')]
+# แยกคำว่า "อัปเดตเป็น" กับชื่อสถานะออกจากกัน จะได้ไม่ผูกกับอัญประกาศที่หน้าเว็บใช้ และไม่ผูกกับ text()
+${Btn_UpdateToWaitPayment}     //button[contains(.,'อัปเดตเป็น') and contains(.,'รอการชำระเงิน')]
+${Btn_UpdateToApprovePayment}  //button[contains(.,'อัปเดตเป็น') and contains(.,'อนุมัติการชำระเงิน')]
 # ปุ่มอัปเดตทุกขั้นรวมกัน ใช้ตอนไม่สนใจว่าขั้นถัดไปคืออะไร และใช้นับรายการที่อัปเดตได้
-${Btn_UpdateBookingStatus}     //button[contains(text(),'อัปเดตเป็น')]
+${Btn_UpdateBookingStatus}     //button[contains(.,'อัปเดตเป็น')]
 ${Btn_CancelBooking}           //button[contains(text(),'ยกเลิกการจอง')]    # TODO ยืนยันกับหน้าจริง
  
 # กล่องโต้ตอบ SweetAlert2 : ปุ่ม "ยืนยัน" ต้องเทียบตรงตัว ไม่งั้นจะจับปุ่ม "ยืนยันยกเลิก" ปนมาด้วย
@@ -253,3 +256,11 @@ ${FM_EQ_NAME}          รถแทรกเตอร์
 ${FM_START_OFFSET}     ${3}
 ${FM_END_OFFSET}       ${7}
 ${FM_BOOK_ADDRESS}     111 หมู่3 ต.หนองหาร อ.สันทราย จ.เชียงใหม่ 52214
+
+# F-MAIN-25 - F-MAIN-27 : หน้ารับอุปกรณ์ เป็นหน้าเดียวกับหน้าส่งคืน ต่างกันที่ปุ่มบนการ์ดตามสถานะของรายการ
+${Pickup_farmerURL}    ${Return_farmerURL}
+${Btn_ReceiptEQ}       //button[contains(text(),'ยืนยันรับอุปกรณ์')]
+
+# F-MAIN-31 - F-MAIN-33 : หน้ารับคืนอุปกรณ์ของเจ้าของอุปกรณ์
+${Return_ownerURL}       ${Base_URL}/owner/delivery
+${Btn_ConfirmReturned}   //button[contains(text(),'ยืนยันรับคืน')]
