@@ -125,7 +125,7 @@ Approve Booking Owner : ${TestCase}
 
 ปิดชุดทดสอบ
     [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
-    Run Keyword And Ignore Error    Save Excel Document    ${DATA_FILE}
+    Run Keyword And Ignore Error    เซฟไฟล์ Excel อย่างปลอดภัย
     Run Keyword And Ignore Error    Close All Excel Documents
     Close All Test Browsers
 
@@ -182,7 +182,15 @@ Approve Booking Owner : ${TestCase}
     [Arguments]    ${Row}    ${ActualResult}    ${ResultPF}
     Write Excel Cell       ${Row}    ${COL_ACTUAL}    ${ActualResult}    sheet_name=${SHEET}
     Write Excel Cell       ${Row}    ${COL_PF}        ${ResultPF}        sheet_name=${SHEET}
-    Save Excel Document    ${DATA_FILE}
+    เซฟไฟล์ Excel อย่างปลอดภัย
+
+เซฟไฟล์ Excel อย่างปลอดภัย
+    [Documentation]    เซฟลงไฟล์ชั่วคราวก่อน แล้วค่อยย้ายไปทับไฟล์จริง
+    ...                ถ้ารันถูกตัดจบระหว่างเขียน ไฟล์ที่ค้างครึ่ง ๆ จะเป็นไฟล์ชั่วคราว ไฟล์จริงยังสมบูรณ์เสมอ
+    ...                (เดิมเซฟทับไฟล์จริงตรง ๆ พอรันถูกตัดกลางคัน ไฟล์ .xlsx จะขาดท้ายจนเปิดไม่ขึ้น)
+    ${Temp}=    Set Variable    ${DATA_FILE}.saving.xlsx
+    Save Excel Document    ${Temp}
+    Move File              ${Temp}    ${DATA_FILE}
 
 
 # =====================================================================

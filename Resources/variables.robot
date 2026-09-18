@@ -116,7 +116,11 @@ ${MyBooking_farmerURL}    ${Base_URL}/farmer/bookings
  
 # ปฏิทิน : ช่องวันที่เป็น readonly พิมพ์ไม่ได้ ต้องคลิกเลือกจากปฏิทินเท่านั้น
 # ปุ่มวันที่เลือกไม่ได้จะมี disabled ทั้งวันของเดือนอื่นและวันที่ผิดเงื่อนไขของระบบ
+# ปุ่ม "วันนี้" อยู่ท้ายกล่องปฏิทิน มีหนึ่งปุ่มต่อปฏิทินที่เปิดอยู่หนึ่งกล่อง
 ${Cal_TodayButton}     //button[normalize-space(text())='วันนี้']
+# หน้าเว็บมีปฏิทินได้พร้อมกัน 2 กล่อง (ช่องวันเริ่ม + ช่องวันสิ้นสุด) locator ปุ่ม "วันนี้" จึงชี้ได้ 2 ตัว
+# ตอนแค่อยากรู้ว่า "มีปฏิทินเปิดอยู่ไหม" ต้องใส่ nth=0 ไม่งั้น Playwright จะล้มด้วย strict mode violation
+${Cal_AnyToday}        xpath=//button[normalize-space(text())='วันนี้'] >> nth=0
 # จับปุ่มเลื่อนเดือนจาก path ของไอคอน chevron ซึ่งไม่เปลี่ยนตามคลาส Tailwind
 # ต้องเขียน name()='path' เพราะ <path> อยู่ใน namespace ของ SVG ซึ่ง XPath บนเอกสาร HTML ไม่ match ด้วยชื่อแท็กเปล่า ๆ
 ${Cal_PrevMonth}       //button[.//*[name()='path'][@d='M15 19l-7-7 7-7']]
@@ -200,9 +204,6 @@ ${Img_EQ}                //input[@name='picture']
 ${Btn_SaveEQ}            //button[contains(text(),'บันทึก')]
 ${Btn_CancelEQ}          //button[contains(text(),'ยกเลิก')]
  
-# ช่องค้นหาบนหน้ารายการอุปกรณ์ของเจ้าของ ยังไม่ได้ใช้ใน TC03 เก็บไว้ให้ครบหน้า
-${Text_SearchOwnerEQ}    //input[@placeholder='พิมพ์ชื่ออุปกรณ์...']
- 
 # บัญชี Owner ที่ใช้เข้าสู่ระบบก่อนเริ่มชุดทดสอบ TC03 : ใช้บัญชีทดสอบกลางที่หัวไฟล์
 ${OwnerUser}             ${TEST_OWNER_USER}
 ${OwnerPass}             ${TEST_OWNER_PASS}
@@ -217,13 +218,8 @@ ${ApproveBooking_ownerURL}     ${Base_URL}/owner/bookings
 # เพราะปุ่ม อัปเดตเป็น "รอการชำระเงิน" ก็มีคำว่า "รอการชำระเงิน" อยู่ด้วย จะจับปนกัน
 # ใช้ . แทน text() เพราะแท็บอาจมีไอคอนหรือตัวเลขนับอยู่ข้างใน
 ${Tab_BookingPending}          //button[contains(.,'รอดำเนินการ') and not(contains(.,'อัปเดต'))]
-${Tab_BookingWaitPayment}      //button[contains(.,'รอการชำระเงิน') and not(contains(.,'อัปเดต'))]
  
-# ปุ่มอัปเดตสถานะบนการ์ดรายการจอง ข้อความบนปุ่มบอกสถานะขั้นถัดไป
-# แยกคำว่า "อัปเดตเป็น" กับชื่อสถานะออกจากกัน จะได้ไม่ผูกกับอัญประกาศที่หน้าเว็บใช้ และไม่ผูกกับ text()
-${Btn_UpdateToWaitPayment}     //button[contains(.,'อัปเดตเป็น') and contains(.,'รอการชำระเงิน')]
-${Btn_UpdateToApprovePayment}  //button[contains(.,'อัปเดตเป็น') and contains(.,'อนุมัติการชำระเงิน')]
-# ปุ่มอัปเดตทุกขั้นรวมกัน ใช้ตอนไม่สนใจว่าขั้นถัดไปคืออะไร และใช้นับรายการที่อัปเดตได้
+# ปุ่มอัปเดตสถานะบนการ์ดรายการจอง ข้อความบนปุ่มบอกสถานะขั้นถัดไป ใช้นับรายการที่อัปเดตได้ด้วย
 ${Btn_UpdateBookingStatus}     //button[contains(.,'อัปเดตเป็น')]
 ${Btn_CancelBooking}           //button[contains(text(),'ยกเลิกการจอง')]    # TODO ยืนยันกับหน้าจริง
  

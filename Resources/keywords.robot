@@ -202,6 +202,26 @@ Get Validation Messages
     RETURN    ${Messages}
 
 #-------------------------------------------------------------------------
+# ตรวจสอบข้อความแจ้งเตือน : ใช้ร่วมกันทั้ง Login_farmer.robot (ทดสอบฟิลด์) และ Usecase_Login_farmer.robot (ทดสอบยูสเคส)
+ข้อความตรงกับที่คาดหวัง
+    [Documentation]    เทียบหลังปรับรูปมาตรฐาน : ต้องตรงทั้งประโยค หรือระบบเตือนละเอียดกว่าเอกสาร
+    ...                ไม่รับกรณีระบบเตือนสั้นกว่าเอกสาร เช่น เอกสารระบุ "อย่างน้อย 6 ตัวอักษร"
+    ...                แต่ระบบตอบแค่ "กรุณากรอกชื่อผู้ใช้" ซึ่งยังไม่ได้พิสูจน์กฎความยาว
+    [Arguments]    ${Message}    ${ExpectedResult}
+    ${Actual}=      ปรับข้อความเป็นรูปมาตรฐาน    ${Message}
+    ${Expected}=    ปรับข้อความเป็นรูปมาตรฐาน    ${ExpectedResult}
+    ${Matched}=     Evaluate    $Actual == $Expected or $Expected in $Actual
+    RETURN    ${Matched}
+
+ปรับข้อความเป็นรูปมาตรฐาน
+    [Documentation]    รวมขีดกลางทุกแบบเป็นตัวเดียว ตัดช่องว่างทั้งหมด และไม่แยกตัวพิมพ์ใหญ่เล็ก
+    [Arguments]    ${Text}
+    ${Text}=    Evaluate    unicodedata.normalize("NFC", str($Text))    modules=unicodedata
+    ${Text}=    Evaluate
+    ...    "".join(("-" if 0x2010 <= ord(c) <= 0x2015 or ord(c) == 0x2212 else c) for c in $Text if not c.isspace()).lower()
+    RETURN    ${Text}
+
+#-------------------------------------------------------------------------
 # Add Cart Farmer : ไม่มีการกรอกฟอร์ม เป็นคีย์เวิร์ด "ค้นหา - กดปุ่ม - ดูตะกร้า" ล้วน ๆ
 Close Login Popup
     [Documentation]    ปิด popup เข้าสู่ระบบสำเร็จ ระบบจะพาเข้าหน้าหลักเมื่อกด "ตกลง" เท่านั้น
@@ -268,6 +288,61 @@ Select Equipment Type
 
     Select Options By    ${Select_EQType}    label    ${All}
     RETURN    ${True}
+
+Select Equipment Type Matching
+    [Documentation]    เลือกประเภทใน dropdown ให้เข้าคู่กับชื่ออุปกรณ์ที่กำลังจะค้นหา คืน True เมื่อได้เลือกประเภทเจาะจงจริง
+    ...
+    ...                หน้าค้นหากรองด้วยประเภท "และ" ชื่ออุปกรณ์พร้อมกัน ถ้า dropdown ค้างอยู่ที่ประเภทอื่น
+    ...                อุปกรณ์ที่พิมพ์ค้นหาจะไม่ขึ้นบนหน้าจอเลย คีย์เวิร์ดนี้จึงหาประเภทจากคำค้นหาให้เอง
+    ...                ไม่มีตัวเลือกไหนเข้าคู่ จะเลือก "ทุกประเภท" แทน เพราะไม่กรองยังดีกว่ากรองผิดประเภท
+    [Arguments]    ${Name}
+
+    ${Len}=    Get Length    ${Name}
+    IF    ${Len} == 0
+        ${Cleared}=    Select Equipment Type    ${EMPTY}
+        RETURN    ${False}
+    END
+
+    ${Ok}    ${Options}=    Run Keyword And Ignore Error    Get Select Options    ${Select_EQType}
+    IF    '${Ok}' == 'FAIL'
+        Log    ไม่พบ dropdown ประเภทอุปกรณ์ จึงข้ามการเลือกประเภท    level=WARN
+        RETURN    ${False}
+    END
+
+    ${Labels}=     Evaluate    [str(o.get("label", "")).strip() for o in $Options]
+    ${Matched}=    จับคู่ประเภทกับคำค้นหา    ${Labels}    ${Name}
+
+    IF    '${Matched}' == '${EMPTY}'
+        Log    ไม่มีประเภทที่เข้าคู่กับ "${Name}" ใน dropdown (มี ${Labels}) จึงเลือกทุกประเภทแทน    level=INFO
+        ล้างตัวกรองประเภทอุปกรณ์    ${Labels}
+        RETURN    ${False}
+    END
+
+    Select Options By    ${Select_EQType}    label    ${Matched}
+    Log    เลือกประเภท "${Matched}" ให้ตรงกับคำค้นหา "${Name}"    level=INFO
+    RETURN    ${True}
+
+จับคู่ประเภทกับคำค้นหา
+    [Documentation]    หาตัวเลือกใน dropdown ที่เข้าคู่กับคำค้นหามากที่สุด ไม่พบคืนค่าว่าง
+    ...                จับคู่ตามลำดับ ตรงตัว > เป็นส่วนของกัน > คำร่วมกันยาวสุดตั้งแต่ 3 ตัวอักษร
+    ...                ข้ามตัวเลือกที่หมายถึง "ทุกประเภท" เพราะไม่ได้เจาะจงประเภทใด
+    [Arguments]    ${Labels}    ${Name}
+    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ในเงื่อนไขของ comprehension
+    ${Exact}=    Evaluate    next(filter(lambda l, n=$Name.strip(): l == n, $Labels), "")
+    IF    '${Exact}' != '${EMPTY}'    RETURN    ${Exact}
+
+    ${Types}=    Evaluate    [l for l in $Labels if l and "ทั้งหมด" not in l and "ทุกประเภท" not in l]
+    ${Part}=     Evaluate    next(filter(lambda l, n=$Name.strip(): l in n or n in l, $Types), "")
+    IF    '${Part}' != '${EMPTY}'    RETURN    ${Part}
+
+    # คำร่วมที่ยาวที่สุด เช่น คำค้น "รถไถเดินตาม" กับประเภท "รถไถนา" มีคำร่วมกันคือ "รถไถ"
+    ${Best}=     Evaluate
+    ...    max($Types, key=lambda l, n=$Name.strip(): max((j - i for i in range(len(n)) for j in range(i + 3, len(n) + 1) if n[i:j] in l), default=0), default="")
+    ${Score}=    Evaluate
+    ...    max((j - i for i in range(len($Name.strip())) for j in range(i + 3, len($Name.strip()) + 1) if $Name.strip()[i:j] in $Best), default=0) if $Best else 0
+    IF    ${Score} >= 3    RETURN    ${Best}
+
+    RETURN    ${EMPTY}
 
 Input Search Equipment
     [Documentation]    พิมพ์ชื่ออุปกรณ์ลงช่องค้นหา แล้วรอให้รายการอัปเดตตามคำค้น
@@ -396,14 +471,32 @@ Is Booking Form Displayed
     ${Displayed}=    Is Element Visible    ${Text_StartDate}
     RETURN    ${Displayed}
 
-Get Calendar Month
-    [Documentation]    อ่านหัวปฏิทิน (เช่น "สิงหาคม 2026") คืนเลขเดือนรวมปี (ปี*12+เดือน) ไว้เทียบกับเป้าหมาย
-    ...                คืน 0 เมื่ออ่านหัวปฏิทินไม่ได้ ให้ผู้เรียกตัดสินใจเองว่าจะเลิกเลื่อน
-    ${Header}=    Get Text        ${Cal_Header}
-    ${Header}=    Strip String    ${Header}
+เทียบปีให้เป็น ค.ศ.
+    [Documentation]    ทำให้ปีที่อ่านมาอยู่ในระบบเดียวกันก่อนนำไปเทียบ ปีที่มากกว่า 2400 ถือว่าเป็น พ.ศ.
+    ...                เป็นจุดเดียวในโปรเจกต์ที่มีการบวกลบปี ที่อื่นใช้ค่าปีตามที่เขียนไว้ในไฟล์ทดสอบตรง ๆ
+    ...                หน้าเว็บจะแสดงหัวปฏิทินเป็น ค.ศ. หรือ พ.ศ. ก็ทำงานได้เหมือนกัน
+    [Arguments]    ${Year}
+    ${Year}=      Convert To Integer    ${Year}
+    ${Result}=    Evaluate    ${Year} - ${THAI_YEAR_OFFSET} if ${Year} > 2400 else ${Year}
+    RETURN    ${Result}
 
-    ${Parts}=    Split String    ${Header}
-    ${Count}=    Get Length      ${Parts}
+หากล่องปฏิทินของช่องที่ระบุ
+    [Documentation]    คืน selector ของกล่อง .date-picker-container ที่ครอบช่องวันที่นั้น
+    ...                หน้าเว็บสร้าง DatePickerWithValidation หนึ่งกล่องต่อหนึ่งช่อง และห่อด้วย div คลาสนี้เสมอ
+    ...                ทุก locator ของปฏิทินต้องอ้างจากกล่องนี้ ไม่งั้นจะไปโดนปฏิทินของอีกช่องเมื่อเปิดพร้อมกัน 2 กล่อง
+    [Arguments]    ${Field}
+    RETURN    xpath=(${Field}/ancestor::div[contains(@class,'date-picker-container')])[last()]
+
+อ่านเดือนบนหัวปฏิทิน
+    [Documentation]    อ่านหัวปฏิทินของกล่องที่ระบุ (เช่น "กันยายน 2026") คืนเลขเดือนรวมปี (ปี*12+เดือน)
+    ...                คืน 0 เมื่ออ่านไม่ได้ ให้ผู้เรียกตัดสินใจเองว่าจะเลิกเลื่อน
+    [Arguments]    ${Picker}
+    ${Ok}    ${Header}=    Run Keyword And Ignore Error    Get Text    ${Picker} >> xpath=.//h3
+    IF    '${Ok}' == 'FAIL'    RETURN    ${0}
+
+    ${Header}=    Strip String    ${Header}
+    ${Parts}=     Split String    ${Header}
+    ${Count}=     Get Length      ${Parts}
     IF    ${Count} < 2
         Log    อ่านหัวปฏิทินไม่ได้ (ได้ "${Header}")    level=WARN
         RETURN    ${0}
@@ -419,56 +512,162 @@ Get Calendar Month
     ${Index}=   Evaluate    ${Year} * 12 + ${Month}
     RETURN    ${Index}
 
-เทียบปีให้เป็น ค.ศ.
-    [Documentation]    ทำให้ปีที่อ่านมาอยู่ในระบบเดียวกันก่อนนำไปเทียบ ปีที่มากกว่า 2400 ถือว่าเป็น พ.ศ.
-    ...                เป็นจุดเดียวในโปรเจกต์ที่มีการบวกลบปี ที่อื่นใช้ค่าปีตามที่เขียนไว้ในไฟล์ทดสอบตรง ๆ
-    ...                หน้าเว็บจะแสดงหัวปฏิทินเป็น ค.ศ. หรือ พ.ศ. ก็ทำงานได้เหมือนกัน
-    [Arguments]    ${Year}
-    ${Year}=      Convert To Integer    ${Year}
-    ${Result}=    Evaluate    ${Year} - ${THAI_YEAR_OFFSET} if ${Year} > 2400 else ${Year}
-    RETURN    ${Result}
-
-Go To Calendar Month
-    [Documentation]    เลื่อนปฏิทินไปยังเดือนเป้าหมาย โดยอ่านหัวปฏิทินใหม่ทุกครั้งแทนการนับจำนวนคลิก
+เลื่อนปฏิทินไปยังเดือน
+    [Documentation]    เลื่อนปฏิทินของกล่องที่ระบุไปยังเดือนเป้าหมาย โดยอ่านหัวเดือนใหม่ทุกครั้งแทนการนับจำนวนคลิก
     ...                ปฏิทินอาจเปิดที่เดือนของค่าเดิมในช่อง ไม่ใช่เดือนปัจจุบันเสมอไป
-    [Arguments]    ${TargetIndex}
+    [Arguments]    ${Picker}    ${TargetIndex}
+    ${Prev}=    Set Variable    ${Picker} >> xpath=.//button[.//*[name()='path'][@d='M15 19l-7-7 7-7']]
+    ${Next}=    Set Variable    ${Picker} >> xpath=.//button[.//*[name()='path'][@d='M9 5l7 7-7 7']]
+
     FOR    ${Round}    IN RANGE    24
-        ${Now}=    Get Calendar Month
-        IF    ${Now} == 0            RETURN    ${False}
+        ${Now}=    อ่านเดือนบนหัวปฏิทิน    ${Picker}
+        IF    ${Now} == 0                 RETURN    ${False}
         IF    ${Now} == ${TargetIndex}    RETURN    ${True}
 
-        ${Button}=    Set Variable If    ${Now} < ${TargetIndex}    ${Cal_NextMonth}    ${Cal_PrevMonth}
+        ${Button}=    Set Variable If    ${Now} < ${TargetIndex}    ${Next}    ${Prev}
         Click    ${Button}
         Sleep    0.2s
     END
     Log    เลื่อนปฏิทินครบ 24 ครั้งแล้วยังไม่ถึงเดือนเป้าหมาย    level=WARN
     RETURN    ${False}
 
-Pick Date From Calendar
-    [Documentation]    เปิดปฏิทินของช่องที่ระบุแล้วคลิกเลือกวันที่เป้าหมาย
-    ...                คืนค่าที่อ่านได้จากช่องเมื่อเลือกสำเร็จ / คืนข้อความบอกเหตุเมื่อเลือกไม่ได้
-    ...                ระบบปิดปุ่มวันที่ผิดเงื่อนไขไว้ (disabled) การเลือกไม่ได้จึงเป็นผลลัพธ์ที่ถูกต้อง ไม่ใช่ข้อผิดพลาด
-    [Arguments]    ${Field}    ${Day}    ${MonthIndex}    ${Display}
+หาวันแรกที่ระบบเปิดให้เลือก
+    [Documentation]    เปิดปฏิทินของช่องที่ระบุ แล้วไล่หาวันแรกที่ระบบยังเปิดให้เลือก (ดูไปข้างหน้าไม่เกิน 12 เดือน)
+    ...                คืนเป็น "ปปปป-ดด-วว" (ค.ศ.) หรือคืนค่าว่างเมื่อไม่พบวันว่างเลย
+    ...                ใช้กับกรณีทดสอบที่ต้องการแค่ "วันที่ที่ถูกต้องวันหนึ่ง" ไม่ได้เจาะจงวัน จึงไม่ต้องพึ่งสภาพข้อมูลในฐานข้อมูล
+    [Arguments]    ${Field}
+    ${Picker}=    หากล่องปฏิทินของช่องที่ระบุ    ${Field}
+    ${Opened}=    เปิดปฏิทินให้ได้    ${Field}    ${Picker}
+    IF    not ${Opened}    RETURN    ${EMPTY}
 
-    Click    ${Field}
-    ${Opened}=    Is Element Visible    ${Cal_TodayButton}
-    IF    not ${Opened}    RETURN    เปิดปฏิทินของช่องนี้ไม่ได้
+    ${Next}=    Set Variable    ${Picker} >> xpath=.//button[.//*[name()='path'][@d='M9 5l7 7-7 7']]
 
-    Go To Calendar Month    ${MonthIndex}
+    FOR    ${Round}    IN RANGE    12
+        ${Index}=    อ่านเดือนบนหัวปฏิทิน    ${Picker}
+        IF    ${Index} == 0    BREAK
 
-    ${Enabled}=    Set Variable    xpath=//button[not(@disabled)][.//span[normalize-space(text())='${Day}']]
-    ${AnyCell}=    Set Variable    xpath=//button[.//span[normalize-space(text())='${Day}']]
+        ${Days}=    วันที่ที่ระบบเปิดให้เลือก    ${Picker}
+        ${Day}=     Evaluate    int($Days.split(",")[0].strip()) if $Days[:1].isdigit() else 0
 
-    ${Clickable}=    Get Element Count    ${Enabled}
-    IF    ${Clickable} == 0
-        ${Total}=    Get Element Count    ${AnyCell}
-        RETURN    ระบบปิดวันที่ ${Display} ไม่ให้เลือก (พบปุ่มวันนี้ ${Total} ปุ่ม กดได้ 0 ปุ่ม)
+        IF    ${Day} > 0
+            ${Month}=    Evaluate    (${Index} - 1) % 12 + 1
+            ${Year}=     Evaluate    (${Index} - ${Month}) // 12
+            ${Found}=    Evaluate    "%04d-%02d-%02d" % (${Year}, ${Month}, ${Day})
+            Log    วันแรกที่ระบบเปิดให้เลือกของช่องนี้คือ ${Found}    level=INFO
+            RETURN    ${Found}
+        END
+
+        Click    ${Next}
+        Sleep    0.2s
     END
 
-    Click    ${Enabled} >> nth=0
+    Log    ไล่ดูปฏิทิน 12 เดือนแล้วไม่พบวันที่ระบบเปิดให้เลือกเลย    level=WARN
+    RETURN    ${EMPTY}
+
+Pick Date From Calendar
+    [Documentation]    เปิดปฏิทินของช่องที่ระบุแล้วกดเลือกวันที่เป้าหมาย
+    ...                คืนค่าที่อ่านได้จากช่องเมื่อเลือกสำเร็จ / คืนข้อความบอกเหตุเมื่อเลือกไม่ได้
+    ...
+    ...                ช่องวันที่เป็นปุ่มสลับเปิด-ปิด (onClick -> setIsOpen(!isOpen)) ถ้ากดตอนปฏิทินเปิดอยู่มันจะปิด
+    ...                จึงต้องเช็คก่อนว่าเปิดอยู่หรือยังแล้วค่อยกด ไม่ใช่กดทิ้งไปเลย
+    ...                และหลังเลือกวันแล้วหน้าเว็บปิดปฏิทินให้เอง (setIsOpen(false)) จึงไม่ต้องสั่งปิดซ้ำ
+    [Arguments]    ${Field}    ${Day}    ${MonthIndex}    ${Display}
+
+    ${Picker}=    หากล่องปฏิทินของช่องที่ระบุ    ${Field}
+    ${Opened}=    เปิดปฏิทินให้ได้    ${Field}    ${Picker}
+    IF    not ${Opened}    RETURN    เปิดปฏิทินของช่องนี้ไม่ได้
+
+    เลื่อนปฏิทินไปยังเดือน    ${Picker}    ${MonthIndex}
+
+    # เอาเฉพาะวันของเดือนที่แสดงอยู่ (วันของเดือนข้างเคียงมีคลาส text-gray-300) และเฉพาะปุ่มที่ยังกดได้
+    ${Cell}=     Set Variable    ${Picker} >> xpath=.//button[not(@disabled)][not(contains(@class,'text-gray-300'))][.//span[normalize-space(text())='${Day}']]
+    ${Count}=    Get Element Count    ${Cell}
+
+    IF    ${Count} == 0
+        ${Why}=    เหตุผลที่วันที่นี้เลือกไม่ได้    ${Picker}    ${Day}
+        Run Keyword And Ignore Error
+        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_ปฏิทิน${Display}    fullPage=True
+        RETURN    ระบบปิดวันที่ ${Display} ไม่ให้เลือก (${Why})
+    END
+
+    Click    ${Cell} >> nth=0
     Sleep    0.3s
-    ${Value}=    Get Attribute    ${Field}    value
+
+    # ช่องนี้เป็น controlled input ของ React ค่าจริงอยู่ที่ property ไม่ใช่ attribute
+    ${Value}=      Get Property    ${Field}    value
+    ${Matched}=    ค่าวันที่ตรงกับเป้าหมาย    ${Value}    ${Day}    ${MonthIndex}
+    IF    not ${Matched}
+        Log    กดวันที่ ${Display} แล้วช่องได้ค่า "${Value}" ซึ่งไม่ตรงกับที่ตั้งใจ    level=WARN
+    END
     RETURN    ${Value}
+
+เปิดปฏิทินให้ได้
+    [Documentation]    ทำให้ปฏิทินของช่องนี้อยู่ในสถานะ "เปิด" คืน True เมื่อเปิดได้
+    ...                เปิดอยู่แล้วไม่ต้องกดซ้ำ เพราะการกดช่องคือการสลับเปิด-ปิด กดซ้ำจะกลายเป็นปิด
+    ...                ถ้าปฏิทินของอีกช่องเปิดค้างอยู่ต้องปิดก่อน เพราะกล่องมันลอยทับช่องนี้จนกดไม่โดน
+    [Arguments]    ${Field}    ${Picker}
+    ${Today}=     Set Variable    ${Picker} >> xpath=.//button[normalize-space(text())='วันนี้']
+
+    ${Opened}=    Is Element Visible    ${Today}
+    IF    ${Opened}    RETURN    ${True}
+
+    ${Other}=    Is Element Visible    ${Cal_AnyToday}
+    IF    ${Other}
+        Run Keyword And Ignore Error    Click    ${Text_BookAddress}
+        Sleep    0.2s
+    END
+
+    Click    ${Field}
+    ${Opened}=    Is Element Visible    ${Today}
+    RETURN    ${Opened}
+
+เหตุผลที่วันที่นี้เลือกไม่ได้
+    [Documentation]    แยกสาเหตุว่าวันนั้นถูกปิดเพราะติดจองไว้แล้ว หรือเพราะยังไม่ถึงวันแรกที่ระบบยอมให้เช่า
+    ...                หน้าเว็บใส่ title="วันที่นี้มีการจองแล้ว" ไว้เฉพาะวันที่ติดจอง จึงใช้แยกได้
+    [Arguments]    ${Picker}    ${Day}
+    ${Booked}=    Get Element Count
+    ...    ${Picker} >> xpath=.//button[not(contains(@class,'text-gray-300'))][@title='วันที่นี้มีการจองแล้ว'][.//span[normalize-space(text())='${Day}']]
+    ${Selectable}=    วันที่ที่ระบบเปิดให้เลือก    ${Picker}
+
+    IF    ${Booked} > 0
+        RETURN    วันนี้ติดจองไว้แล้ว | เดือนนี้เลือกได้เฉพาะวันที่ ${Selectable}
+    END
+    RETURN    เป็นวันในอดีต หรือยังไม่ถึงวันแรกที่ระบบยอมให้เช่า | เดือนนี้เลือกได้เฉพาะวันที่ ${Selectable}
+
+วันที่ที่ระบบเปิดให้เลือก
+    [Documentation]    อ่านเลขวันทั้งหมดที่ยังกดได้ในเดือนที่ปฏิทินแสดงอยู่ (นับเฉพาะวันของเดือนนั้น)
+    [Arguments]    ${Picker}
+    ${Ok}    ${Elements}=    Run Keyword And Ignore Error
+    ...    Get Elements    ${Picker} >> xpath=.//button[not(@disabled)][not(contains(@class,'text-gray-300'))][.//span]
+    IF    '${Ok}' == 'FAIL'    RETURN    อ่านรายชื่อวันที่ไม่ได้
+
+    ${Texts}=    Create List
+    FOR    ${El}    IN    @{Elements}
+        ${Text}=    Get Text    ${El}
+        Append To List    ${Texts}    ${Text}
+    END
+    ${Joined}=    Evaluate    ", ".join([t.strip() for t in $Texts if t.strip().isdigit()]) or "ไม่มีวันไหนกดได้เลย"
+    RETURN    ${Joined}
+
+ค่าวันที่ตรงกับเป้าหมาย
+    [Documentation]    ตรวจว่าค่าที่ระบบใส่ลงช่อง (เช่น "6/11/2569") เป็นวันที่ที่ตั้งใจเลือกจริงไหม
+    ...                รองรับทั้ง วัน/เดือน/ปี และ ปี-เดือน-วัน ทั้งปี พ.ศ. และ ค.ศ. และมี/ไม่มีศูนย์นำหน้า
+    [Arguments]    ${Value}    ${Day}    ${MonthIndex}
+    # แยกตัวเลขด้วยเมธอดของสตริง ไม่ใช้ regex เพราะ Robot Framework จะกินเครื่องหมาย \ ในอาร์กิวเมนต์ทิ้ง
+    ${Parts}=    Evaluate    [int(g) for g in "".join(c if c.isdigit() else " " for c in str($Value)).split()]
+    ${Count}=    Get Length    ${Parts}
+    IF    ${Count} < 3    RETURN    ${False}
+
+    ${Month}=    Evaluate    (${MonthIndex} - 1) % 12 + 1
+    ${Year}=     Evaluate    (${MonthIndex} - ${Month}) // 12
+
+    # ตัวเลขก้อนแรกมากกว่า 31 แปลว่าเขียนปีขึ้นก่อน
+    ${GotDay}=      Evaluate    $Parts[2] if $Parts[0] > 31 else $Parts[0]
+    ${GotMonth}=    Evaluate    $Parts[1]
+    ${RawYear}=     Evaluate    $Parts[0] if $Parts[0] > 31 else $Parts[2]
+    ${GotYear}=     เทียบปีให้เป็น ค.ศ.    ${RawYear}
+    ${Matched}=     Evaluate    ${GotDay} == ${Day} and ${GotMonth} == ${Month} and ${GotYear} == ${Year}
+    RETURN    ${Matched}
 
 Input Booking Address
     [Documentation]    กรอกที่อยู่จัดส่ง กรอกทุกครั้งแม้เป็นค่าว่างเพื่อให้ระบบตรวจสอบช่องนี้
@@ -555,6 +754,7 @@ Dismiss Popup
 
 #-------------------------------------------------------------------------
 # Register Owner : โครงเหมือนฝั่ง Farmer ต่างที่ selector จึงแยกคีย์เวิร์ดไว้คนละชุด
+# ยกเว้นช่องวันเกิดที่ใช้ element ชุดเดียวกัน จึงเรียก "Input Birthdate" ร่วมกับฝั่ง Farmer
 # page1
 Open Register Owner Page
     New Context
@@ -609,13 +809,6 @@ Select Owner Gender
         Focus    ${Select_OGender}
         Focus    ${Text_OPhone}
     END
-
-Input Owner Birthdate
-    [Arguments]    ${Daybirth}    ${Monthbirth}    ${Yearbirth}
-    # กรอกทุกช่องแม้ค่าว่างเพื่อให้ระบบเตือน ปีในไฟล์ทดสอบเป็น พ.ศ. อยู่แล้วจึงกรอกตรง ๆ
-    Fill Text    ${Date_Birth}    ${Daybirth}
-    Fill Text    ${Date_Month}    ${Monthbirth}
-    Fill Text    ${Date_Year}     ${Yearbirth}
 
 Input Owner Tel
     [Arguments]    ${Tel}

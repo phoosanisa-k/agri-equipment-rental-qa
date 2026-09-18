@@ -1,18 +1,14 @@
 *** Settings ***
-Documentation     TC03 - Add Cart Farmer | ทดสอบยูสเคส "เพิ่มอุปกรณ์ลงตะกร้า" ของเกษตรกร
-...
-...               ยูสเคสนี้ไม่มีการกรอกฟอร์ม จึงไม่มีการตรวจข้อความแจ้งเตือนรายฟิลด์
-...               มีเฉพาะกรณีทดสอบเชิงกระบวนการ (TC03_F01 - TC03_F07) ตามเอกสาร Test Case หน้า 65-68
+Documentation     TC03 - Add Cart Farmer (Usecase) | ทดสอบยูสเคส "เพิ่มอุปกรณ์ลงตะกร้า" ของเกษตรกร (TC03_F01-F07)
+...               ย้ายมาจาก Testcase/Addcart_farmer.robot ทั้งไฟล์ เพราะยูสเคสนี้ไม่มีฟอร์มให้กรอก
+...               จึงไม่มีการตรวจข้อความแจ้งเตือนรายฟิลด์ มีแต่กรณีทดสอบเชิงกระบวนการล้วน ๆ
+...               ใช้ข้อมูลคงที่ (fix ค่าตายตัวในสคริปต์) ไม่อ่าน/เขียน Excel อีกต่อไป
 ...               ทุกกรณียกเว้น TC03_F05 ต้องเข้าสู่ระบบก่อน จึงขึ้นกับยูสเคส TC01 Login
-...
-...               เลือกกรณีที่รันจากคอลัมน์ ${Run} (Yes/No) ใน Data.xlsx และเขียนผลกลับลง ActualResult / Result
+...               อ้างอิงจากเอกสาร Test Case หน้า 65-68
 Metadata          System      ระบบเว็บศูนย์กลางให้บริการเช่าอุปกรณ์ทางการเกษตร (SRS v7.0)
 Metadata          Use Case    TC03 Add Cart Farmer
-Metadata          Test Data   TestData/Data.xlsx (sheet: AddCart_Farmer)
 
 Resource          ../Resources/keywords.robot
-Library           DataDriver    file=${CURDIR}/../TestData/Data.xlsx    sheet_name=AddCart_Farmer
-Library           ExcelLibrary
 Library           OperatingSystem
 Library           String
 Library           Collections
@@ -20,34 +16,76 @@ Library           Collections
 Suite Setup       เปิดชุดทดสอบ
 Suite Teardown    ปิดชุดทดสอบ
 Test Teardown     เก็บผลท้ายกรณีทดสอบ
-Test Template     ดำเนินการกรณีทดสอบ
 
 
 *** Variables ***
-# ---------- ที่อยู่ของไฟล์และโฟลเดอร์ ----------
-${DATA_FILE}      ${CURDIR}/../TestData/Data.xlsx
-${SHEET}          AddCart_Farmer
-${SCREENSHOT_DIR}    ${CURDIR}/../Screenshot
-${USECASE}        TC03_AddCart_Farmer
-
-# ---------- ตำแหน่งคอลัมน์ในชีต ----------
-${COL_ID}         ${2}     # คอลัมน์ B : ${TestCase}
-${COL_ACTUAL}     ${9}     # คอลัมน์ I : ${ActualResult}
-${COL_PF}         ${10}    # คอลัมน์ J : ${Result}
+# ---------- ไฟล์และโฟลเดอร์ ----------
+${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot
+${USECASE}            TC03_Usecase_AddCart_Farmer
 
 # ---------- ข้อความที่ใช้ตรวจการเข้าสู่ระบบ ----------
 ${SUCCESS_KEYWORD}    สำเร็จ
 ${Popup_Success}      text=${SUCCESS_KEYWORD}
 ${POPUP_TIMEOUT}      10s
 
+# ---------- บัญชีคงที่ : ผู้ใช้สร้างไว้ล่วงหน้าในระบบจริงแล้ว (บัญชีเดียวกับ Usecase_Login_farmer) ----------
+${LOGIN_USERNAME}     somchaikaew
+${LOGIN_PASSWORD}     Somc1442!
+
+# ---------- อุปกรณ์ที่ใช้ทดสอบ : ต้องมีอยู่จริงในระบบและสถานะตรงตามที่ระบุ ----------
+${EQUIP_TYPE}         รถไถเดินตาม
+${EQUIP_NAME}         รถไถเดินตาม
+${UNAVAIL_TYPE}       เครื่องพ่นยาแบบสะพาย
+${UNAVAIL_NAME}       เครื่องพ่นสารการเกษตร
+
 # ---------- ตัวแปรระดับกรณีทดสอบ ใช้ส่งข้อมูลให้ teardown ----------
 ${TC_ID}             UNKNOWN
-${ROW_NUM}           ${0}
 ${ACTUAL_MESSAGE}    ${EMPTY}
 
 
 *** Test Cases ***
-Add Cart Farmer : ${TestCase}
+TC03_F01 - ค้นหาอุปกรณ์แล้วเพิ่มลงตะกร้าสำเร็จ
+    [Documentation]    Basic Flow : ค้นหาแล้วกดเพิ่มในตะกร้า ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการในตะกร้า
+    Set Test Variable    ${TC_ID}    TC03_F01
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
+    กรณี TC03_F01    ${Data}
+
+TC03_F02 - เพิ่มอุปกรณ์รายการซ้ำ
+    [Documentation]    Invalid : กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้ และตะกร้าต้องเหลือเพียง 1 รายการ
+    Set Test Variable    ${TC_ID}    TC03_F02
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
+    กรณี TC03_F02    ${Data}
+
+TC03_F03 - เพิ่มอุปกรณ์ที่ไม่พร้อมใช้งาน
+    [Documentation]    AC01-01 / AC01-02 : อุปกรณ์ไม่พร้อมใช้งาน ต้องเพิ่มลงตะกร้าไม่ได้
+    Set Test Variable    ${TC_ID}    TC03_F03
+    ${Data}=    สร้างข้อมูลทดสอบ    ${UNAVAIL_TYPE}    ${UNAVAIL_NAME}
+    กรณี TC03_F03    ${Data}
+
+TC03_F04 - ล้างตะกร้าแล้วตะกร้าต้องว่าง
+    [Documentation]    เพิ่มอุปกรณ์ 1 ชิ้น แล้วกดปุ่ม "ล้างตะกร้า" ตะกร้าต้องว่าง
+    Set Test Variable    ${TC_ID}    TC03_F04
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
+    กรณี TC03_F04    ${Data}
+
+TC03_F05 - เพิ่มลงตะกร้าโดยยังไม่เข้าสู่ระบบ
+    [Documentation]    ตรวจ Pre-Condition ของเอกสาร : ผู้ใช้ต้องเข้าสู่ระบบก่อนจึงจะเพิ่มลงตะกร้าได้
+    Set Test Variable    ${TC_ID}    TC03_F05
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
+    กรณี TC03_F05    ${Data}
+
+TC03_F06 - ตะกร้าคงอยู่หลังรีเฟรชหน้า
+    [Documentation]    ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
+    Set Test Variable    ${TC_ID}    TC03_F06
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
+    กรณี TC03_F06    ${Data}
+
+TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละรายการ
+    [Documentation]    เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้า แล้วลบทีละรายการจนตะกร้าว่าง
+    ...                เว้นประเภทและชื่ออุปกรณ์ว่างไว้ เพื่อให้ระบบแสดงอุปกรณ์ทั้งหมด
+    Set Test Variable    ${TC_ID}    TC03_F07
+    ${Data}=    สร้างข้อมูลทดสอบ    ${EMPTY}    ${EMPTY}
+    กรณี TC03_F07    ${Data}
 
 
 *** Keywords ***
@@ -56,11 +94,9 @@ Add Cart Farmer : ${TestCase}
 # =====================================================================
 
 เปิดชุดทดสอบ
-    [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
+    [Documentation]    ล้างภาพของรอบก่อน และเปิดเบราว์เซอร์ (ไม่ต้องเปิด Excel เพราะไฟล์นี้ fix ค่าตายตัว ไม่มีการเขียนผลกลับ)
     Create Directory    ${SCREENSHOT_DIR}
     ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
-
-    Open Excel Document    ${DATA_FILE}    AddCart
     Open Test Browser
 
 ลบภาพของรอบก่อน
@@ -70,113 +106,44 @@ Add Cart Farmer : ${TestCase}
     ${Files}=    List Files In Directory    ${Folder}    ${USECASE}_*.png
     FOR    ${File}    IN    @{Files}
         ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
-        IF    not ${Removed}
-            Log    ลบไฟล์ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
-        END
+        IF    not ${Removed}    Log    ลบไฟล์ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
     END
 
 ปิดชุดทดสอบ
-    [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
-    Run Keyword And Ignore Error    Save Excel Document    ${DATA_FILE}
-    Run Keyword And Ignore Error    Close All Excel Documents
+    [Documentation]    ปิดเบราว์เซอร์ทั้งหมด
     Close All Test Browsers
 
 เก็บผลท้ายกรณีทดสอบ
-    [Documentation]    เก็บภาพเมื่อไม่ผ่าน เขียนผลกลับลง Excel แล้วปิด context
-    ...                กรณีที่ถูกข้าม (${ROW_NUM} = 0) จะไม่เขียนทับผลเดิม
-    ${Actual}=    Set Variable    ${ACTUAL_MESSAGE}
-
+    [Documentation]    เก็บภาพเมื่อไม่ผ่าน แล้วปิด context (ไม่มีการเขียนผลกลับ Excel เพราะไฟล์นี้ fix ค่าตายตัว)
     IF    '${TEST STATUS}' == 'FAIL'
         Run Keyword And Ignore Error
         ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
-
-        # กรณีที่ล้มก่อนได้ข้อความจากระบบ ให้บันทึกสาเหตุที่ล้มแทน
-        ${Length}=    Get Length    ${ACTUAL_MESSAGE}
-        IF    ${Length} == 0
-            ${Actual}=    Get Line         ${TEST MESSAGE}    0
-            ${Actual}=    Get Substring    ${Actual}          0    250
-        END
     END
-
-    IF    ${ROW_NUM} > 0
-        ${ResultPF}=    Set Variable If    '${TEST STATUS}' == 'PASS'    Pass    Fail
-        Run Keyword And Ignore Error    บันทึกผลลง Excel    ${ROW_NUM}    ${Actual}    ${ResultPF}
-    END
-
-    # Ignore Error เพราะกรณีที่ถูกข้ามยังไม่มี context ถูกเปิด
+    # Ignore Error เพราะบางกรณีอาจยังไม่มี context ถูกเปิด
     Run Keyword And Ignore Error    Close Test Context
 
 
 # =====================================================================
-# 2. การอ่านและเขียนไฟล์ Excel
+# 2. เตรียมข้อมูลทดสอบ
 # =====================================================================
 
-หาแถวของกรณีทดสอบ
-    [Documentation]    ค้นหมายเลขแถวจากรหัสกรณีทดสอบในคอลัมน์ B (index 0 คือหัวตาราง แถวจึงเป็น index + 1)
-    ...                คืน 0 เมื่อไม่พบ เพื่อให้ teardown ข้ามการเขียนผลแทนที่จะล้ม
-    [Arguments]    ${TestCaseID}
-    ${Ids}=    Read Excel Column    ${COL_ID}    sheet_name=${SHEET}
-    ${Ids}=    Evaluate    ["" if v is None else str(v).strip() for v in $Ids]
-
-    ${Found}=    Run Keyword And Return Status    List Should Contain Value    ${Ids}    ${TestCaseID}
-    IF    not ${Found}
-        Log    ไม่พบ ${TestCaseID} ในคอลัมน์ B ของชีต ${SHEET} จึงไม่เขียนผลกลับ    level=WARN
-        RETURN    ${0}
-    END
-
-    ${Index}=    Get Index From List    ${Ids}    ${TestCaseID}
-    ${Row}=      Evaluate    ${Index} + 1
-    RETURN    ${Row}
-
-บันทึกผลลง Excel
-    [Documentation]    เขียนผลที่ได้จริงและสถานะ Pass/Fail กลับลงไฟล์ Excel ตามแถวของกรณีทดสอบ
-    [Arguments]    ${Row}    ${ActualResult}    ${ResultPF}
-    Write Excel Cell       ${Row}    ${COL_ACTUAL}    ${ActualResult}    sheet_name=${SHEET}
-    Write Excel Cell       ${Row}    ${COL_PF}        ${ResultPF}        sheet_name=${SHEET}
-    Save Excel Document    ${DATA_FILE}
-
-
-# =====================================================================
-# 3. จุดเริ่มของทุกกรณีทดสอบ
-# =====================================================================
-
-ดำเนินการกรณีทดสอบ
-    [Documentation]    อ่านข้อมูลจาก Excel แล้วส่งต่อให้คีย์เวิร์ด "กรณี <รหัสกรณีทดสอบ>"
-    [Arguments]    ${Run}              ${TestCase}         ${TestScenario}
-    ...            ${Username}         ${Password}
-    ...            ${EquipmentType}    ${EquipmentName}    ${ExpectedResult}
-
-    # แถวสรุปผลท้ายชีตไม่มีรหัสกรณีทดสอบ จึงไม่ใช่กรณีทดสอบ
-    IF    '${TestCase}' == '${EMPTY}'
-        Skip    ไม่ใช่กรณีทดสอบ (แถวสรุปผลในไฟล์ Excel)
-    END
-    IF    '${Run}' != 'Yes'
-        Skip    ไม่ได้เลือกให้รัน (Run = ${Run})
-    END
-
-    Set Test Documentation    ${TestScenario}
-    Set Test Variable         ${TC_ID}             ${TestCase}
-    Set Test Variable         ${ACTUAL_MESSAGE}    ${EMPTY}
-
-    ${Row}=    หาแถวของกรณีทดสอบ    ${TestCase}
-    Set Test Variable    ${ROW_NUM}    ${Row}
-
+สร้างข้อมูลทดสอบ
+    [Documentation]    สร้าง Dictionary ข้อมูลสำหรับกรณีทดสอบ ใช้บัญชี login คงที่ร่วมกับประเภท/ชื่ออุปกรณ์ที่ระบุ
+    [Arguments]    ${EquipmentType}    ${EquipmentName}
     ${Data}=    Create Dictionary
-    ...    Username=${Username}                Password=${Password}
-    ...    EquipmentType=${EquipmentType}      EquipmentName=${EquipmentName}
-    Log    ${TestCase} : ${TestScenario} | ข้อมูลที่ใช้ทดสอบ ${Data}    level=INFO
-
-    Run Keyword    กรณี ${TestCase}    ${Data}    ${ExpectedResult}
+    ...    Username=${LOGIN_USERNAME}         Password=${LOGIN_PASSWORD}
+    ...    EquipmentType=${EquipmentType}     EquipmentName=${EquipmentName}
+    RETURN    ${Data}
 
 
 # =====================================================================
-# 4. กรณีทดสอบของยูสเคส (TC03_F01 - TC03_F07)
+# 3. กรณีทดสอบของยูสเคส (TC03_F01 - TC03_F07)
 # =====================================================================
 
 กรณี TC03_F01
     [Documentation]    Basic Flow : ค้นหาแล้วกดเพิ่มในตะกร้า
     ...                ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการที่ถูกชิ้นอยู่ในตะกร้า
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -213,7 +180,7 @@ Add Cart Farmer : ${TestCase}
 กรณี TC03_F02
     [Documentation]    ตามเอกสารข้อ Invalid : กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้
     ...                และในตะกร้าต้องเหลือเพียง 1 รายการ
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -254,7 +221,7 @@ Add Cart Farmer : ${TestCase}
 กรณี TC03_F03
     [Documentation]    ตามเอกสาร AC01-01 / AC01-02 : อุปกรณ์ที่ไม่พร้อมใช้งาน
     ...                ระบบจะไม่แสดงหรือปิดปุ่มไว้ก็ได้ แต่ตะกร้าต้องยังว่าง
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -299,7 +266,7 @@ Add Cart Farmer : ${TestCase}
 กรณี TC03_F04
     [Documentation]    ตามเอกสาร TC05 Add cart ขั้นตอน Click clear cart / Verify empty cart
     ...                เพิ่มอุปกรณ์ 1 ชิ้น แล้วกดปุ่ม "ล้างตะกร้า" ตะกร้าต้องว่าง
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -335,7 +302,7 @@ Add Cart Farmer : ${TestCase}
 กรณี TC03_F05
     [Documentation]    ตรวจ Pre-Condition ของเอกสาร : ผู้ใช้ต้องเข้าสู่ระบบก่อนจึงจะเพิ่มลงตะกร้าได้
     ...                เข้าหน้าค้นหาโดยไม่เข้าสู่ระบบ แล้วกดเพิ่มในตะกร้า ระบบต้องกันไว้
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เปิดหน้าค้นหาอุปกรณ์โดยไม่เข้าสู่ระบบ
 
@@ -366,7 +333,7 @@ Add Cart Farmer : ${TestCase}
 
 กรณี TC03_F06
     [Documentation]    ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
-    [Arguments]    ${Data}    ${ExpectedResult}
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -402,8 +369,8 @@ Add Cart Farmer : ${TestCase}
 
 กรณี TC03_F07
     [Documentation]    เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้า แล้วลบทีละรายการจนตะกร้าว่าง
-    ...                เว้นประเภทและชื่ออุปกรณ์ว่างไว้ใน Excel เพื่อให้ระบบแสดงอุปกรณ์ทั้งหมด
-    [Arguments]    ${Data}    ${ExpectedResult}
+    ...                เว้นประเภทและชื่ออุปกรณ์ว่างไว้ เพื่อให้ระบบแสดงอุปกรณ์ทั้งหมด
+    [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
     Clear Cart
@@ -444,7 +411,7 @@ Add Cart Farmer : ${TestCase}
 
 
 # =====================================================================
-# 5. ขั้นตอนย่อยของยูสเคส
+# 4. ขั้นตอนย่อยของยูสเคส
 # =====================================================================
 
 เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์
@@ -510,11 +477,11 @@ Add Cart Farmer : ${TestCase}
 
 
 # =====================================================================
-# 6. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล และเก็บหลักฐาน
+# 5. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล และเก็บหลักฐาน
 # =====================================================================
 
 บันทึกผลที่ได้จริง
-    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ ให้ teardown เขียนลงคอลัมน์ ActualResult
+    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ ให้ teardown ใช้เขียน log เมื่อกรณีทดสอบไม่ผ่าน
     [Arguments]    ${Text}
     Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
 
