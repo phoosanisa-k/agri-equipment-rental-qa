@@ -2,6 +2,8 @@
 Library           Browser
 Library           Collections
 Library           String
+Library           OperatingSystem
+Library           ExcelLibrary
 Resource          variables.robot
 
 
@@ -141,9 +143,12 @@ Select Gender
 Input Birthdate
     [Arguments]    ${Daybirth}    ${Monthbirth}    ${Yearbirth}
     # กรอกทุกช่องแม้ค่าว่างเพื่อให้ระบบเตือน ปีในไฟล์ทดสอบเป็น พ.ศ. อยู่แล้วจึงกรอกตรง ๆ
-    Fill Text    ${Date_Birth}    ${Daybirth}
-    Fill Text    ${Date_Month}    ${Monthbirth}
-    Fill Text    ${Date_Year}     ${Yearbirth}
+    # ใช้ Type Text แทน Fill Text เพราะช่องเป็น input type="number" ถ้าค่าทดสอบมีอักขระที่ไม่ใช่ตัวเลข
+    # (เช่นกรณี Invalid Format ที่ยัดวันที่ทั้งก้อนมาในช่องเดียว) Fill Text จะ error ทันทีตั้งแต่ระดับ Playwright
+    # ก่อนถึงขั้นให้เว็บตรวจสอบ Type Text จำลองการพิมพ์ทีละตัวอักษรจริง ให้ browser กรองตัวที่พิมพ์ไม่ได้เองแทน
+    Type Text    ${Date_Birth}    ${Daybirth}
+    Type Text    ${Date_Month}    ${Monthbirth}
+    Type Text    ${Date_Year}     ${Yearbirth}
 
 Input Tel
     [Arguments]    ${Tel}
@@ -187,8 +192,12 @@ Get Validation Messages
 
     IF    '${Status}' == 'FAIL'    RETURN    ${Messages}
 
+    # หน้าเว็บอาจเปลี่ยนระหว่างวนอ่าน (เช่น ฟอร์มปิดหลังบันทึกสำเร็จ) element ที่นับไว้จึงหายไปได้
+    # อ่านแต่ละตัวด้วย timeout สั้นและข้ามตัวที่อ่านไม่ได้ ไม่ให้ค้างรอ 30 วินาทีแล้วทั้งเคสล้ม
+    Set Browser Timeout    ${SHORT_TIMEOUT}
     FOR    ${Element}    IN    @{Elements}
-        ${Text}=    Get Text        ${Element}
+        ${Ok}    ${Text}=    Run Keyword And Ignore Error    Get Text    ${Element}
+        IF    '${Ok}' == 'FAIL'    CONTINUE
         ${Text}=    Strip String    ${Text}
 
         # locator อาจจับได้ทั้ง element แม่และลูกที่ข้อความเดียวกัน จึงกรองข้อความซ้ำออก
@@ -199,27 +208,145 @@ Get Validation Messages
             Append To List    ${Messages}    ${Text}
         END
     END
+    Set Browser Timeout    ${DEFAULT_TIMEOUT}
     RETURN    ${Messages}
 
 #-------------------------------------------------------------------------
-# ตรวจสอบข้อความแจ้งเตือน : ใช้ร่วมกันทั้ง Login_farmer.robot (ทดสอบฟิลด์) และ Usecase_Login_farmer.robot (ทดสอบยูสเคส)
-ข้อความตรงกับที่คาดหวัง
-    [Documentation]    เทียบหลังปรับรูปมาตรฐาน : ต้องตรงทั้งประโยค หรือระบบเตือนละเอียดกว่าเอกสาร
-    ...                ไม่รับกรณีระบบเตือนสั้นกว่าเอกสาร เช่น เอกสารระบุ "อย่างน้อย 6 ตัวอักษร"
-    ...                แต่ระบบตอบแค่ "กรุณากรอกชื่อผู้ใช้" ซึ่งยังไม่ได้พิสูจน์กฎความยาว
-    [Arguments]    ${Message}    ${ExpectedResult}
-    ${Actual}=      ปรับข้อความเป็นรูปมาตรฐาน    ${Message}
-    ${Expected}=    ปรับข้อความเป็นรูปมาตรฐาน    ${ExpectedResult}
-    ${Matched}=     Evaluate    $Actual == $Expected or $Expected in $Actual
-    RETURN    ${Matched}
+# เทียบผลจริงกับที่คาดหวังแบบตรงกัน 100% (Exact Match) : ไม่ตัดช่องว่าง ไม่อนุโลม ไม่แทนที่คำ
+เทียบผลจริงกับที่คาดหวัง
+    [Arguments]    ${Actual}    ${Expected}
+    Should Be Equal    ${Actual}    ${Expected}
+    ...    msg=ระบบตอบ "${Actual}" แต่เอกสารกำหนด "${Expected}"    values=False
 
-ปรับข้อความเป็นรูปมาตรฐาน
-    [Documentation]    รวมขีดกลางทุกแบบเป็นตัวเดียว ตัดช่องว่างทั้งหมด และไม่แยกตัวพิมพ์ใหญ่เล็ก
+#-------------------------------------------------------------------------
+# Excel : คีย์เวิร์ดกลางสำหรับสวีทที่อ่านข้อมูลทดสอบและเขียนผลกลับ (ต้อง Open Excel Document ก่อน)
+นับแถวใน Excel
+    [Documentation]    จำนวนแถวทั้งหมดของชีต (รวมหัวตาราง) นับจากคอลัมน์รหัสกรณีทดสอบ
+    [Arguments]    ${Sheet}    ${ColId}
+    ${Ids}=      Read Excel Column    ${ColId}    sheet_name=${Sheet}
+    ${Total}=    Get Length    ${Ids}
+    RETURN    ${Total}
+
+อ่านแถวข้อมูลจาก Excel
+    [Documentation]    อ่านทั้งแถวเป็นลิสต์ข้อความ ช่องว่างเป็น "" ตัวเลขเต็มเป็นข้อความเลขจำนวนเต็ม
+    [Arguments]    ${Sheet}    ${Row}    ${ColumnCount}
+    ${Cells}=    Read Excel Row    ${Row}    max_num=${ColumnCount}    sheet_name=${Sheet}
+    ${Cells}=    Evaluate
+    ...    ["" if v is None else (str(int(v)) if isinstance(v, float) and v.is_integer() else str(v)) for v in $Cells]
+    RETURN    ${Cells}
+
+บันทึกผลทดสอบลง Excel
+    [Documentation]    เขียนผลที่ได้จริงและ Pass/Fail ลงแถวที่ระบุ แล้วเซฟผ่านไฟล์ชั่วคราว (ถ้ารันถูกตัดกลางคัน ไฟล์จริงยังสมบูรณ์)
+    [Arguments]    ${DataFile}    ${Sheet}    ${Row}    ${ColActual}    ${ColResult}    ${Actual}    ${Result}
+    Write Excel Cell    ${Row}    ${ColActual}    ${Actual}    sheet_name=${Sheet}
+    Write Excel Cell    ${Row}    ${ColResult}    ${Result}    sheet_name=${Sheet}
+    เซฟ Excel อย่างปลอดภัย    ${DataFile}
+
+เซฟ Excel อย่างปลอดภัย
+    [Arguments]    ${DataFile}
+    ${Temp}=    Set Variable    ${DataFile}.saving.xlsx
+    Save Excel Document    ${Temp}
+    Move File    ${Temp}    ${DataFile}
+
+ลบภาพทั้งหมดในโฟลเดอร์
+    [Documentation]    ลบ *.png ในโฟลเดอร์ของยูสเคส ไม่ลบตัวโฟลเดอร์ เพราะ OneDrive มักคืน Access denied
+    [Arguments]    ${Folder}
+    Create Directory    ${Folder}
+    ${Files}=    List Files In Directory    ${Folder}    *.png
+    FOR    ${File}    IN    @{Files}
+        ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
+        IF    not ${Removed}    Log    ลบไฟล์ ${File} ไม่สำเร็จ    level=WARN
+    END
+
+รวมข้อความหลายรายการ
+    [Documentation]    รวมลิสต์ข้อความเป็นข้อความเดียวคั่นด้วย " | " ถ้าลิสต์ว่างคืนข้อความที่ส่งมาเป็น ${WhenEmpty}
+    [Arguments]    ${Messages}    ${WhenEmpty}
+    ${Count}=    Get Length    ${Messages}
+    IF    ${Count} == 0    RETURN    ${WhenEmpty}
+    ${Joined}=    Evaluate    " | ".join($Messages)
+    RETURN    ${Joined}
+
+สรุปข้อความที่ระบบตอบ
+    [Documentation]    ข้อความที่บันทึกลง ActualResult : ข้อความบน popup ถ้ามี ไม่มีให้ใช้ข้อความแจ้งเตือนที่ระบบแสดง
+    ...                (หลายข้อความคั่นด้วย " | ") ถ้าระบบไม่แสดงอะไรเลยเป็นค่าว่าง ไม่ใส่ข้อความแทน
+    [Arguments]    ${Messages}    ${Popup}
+    ${PopupLen}=    Get Length    ${Popup}
+    IF    ${PopupLen} > 0    RETURN    ${Popup}
+    ${Result}=    รวมข้อความหลายรายการ    ${Messages}    ${EMPTY}
+    RETURN    ${Result}
+
+#-------------------------------------------------------------------------
+# โครงกลางของไฟล์ใน UseCase : ใช้ร่วมกันทั้ง 10 ไฟล์
+# ไฟล์ที่เรียกใช้ต้องประกาศตัวแปร ${USECASE} ${SCREENSHOT_DIR} ${TC_ID} ${ACTUAL_MESSAGE}
+เตรียมชุดทดสอบยูสเคส
+    [Documentation]    ล้างภาพของรอบก่อนในโฟลเดอร์ของยูสเคส แล้วเปิดเบราว์เซอร์
+    ลบภาพทั้งหมดในโฟลเดอร์    ${SCREENSHOT_DIR}
+    Open Test Browser
+
+ปิดชุดทดสอบ
+    [Documentation]    ปิดเบราว์เซอร์ทั้งหมด
+    Close All Test Browsers
+
+บันทึกผลที่ได้จริง
+    [Documentation]    จำข้อความที่ระบบตอบไว้ ให้ "เก็บผลท้ายกรณีทดสอบ" เขียนลง log และ report
     [Arguments]    ${Text}
-    ${Text}=    Evaluate    unicodedata.normalize("NFC", str($Text))    modules=unicodedata
-    ${Text}=    Evaluate
-    ...    "".join(("-" if 0x2010 <= ord(c) <= 0x2015 or ord(c) == 0x2212 else c) for c in $Text if not c.isspace()).lower()
-    RETURN    ${Text}
+    Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
+
+เก็บผลท้ายกรณีทดสอบ
+    [Documentation]    ใช้เป็น Test Teardown : เขียนผลจริงลง log และ report ถ่ายภาพเมื่อไม่ผ่าน แล้วเก็บกวาด
+    ...                ${Cleanup} คือคีย์เวิร์ดที่ใช้เก็บกวาดตอนจบเคส (ค่าเริ่มต้นปิด context)
+    [Arguments]    ${Cleanup}=Close Test Context
+    Log    ${TC_ID} ข้อความที่ระบบตอบ : "${ACTUAL_MESSAGE}"    level=INFO
+    IF    $ACTUAL_MESSAGE != ''
+        Set Test Message    \nผลที่ได้จริง : ${ACTUAL_MESSAGE}    append=True
+    END
+    IF    '${TEST STATUS}' == 'FAIL'
+        Run Keyword And Ignore Error
+        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
+    END
+    # Ignore Error เพราะบางกรณีอาจไม่มี context หรือไม่มีฟอร์ม/กล่องโต้ตอบค้างอยู่
+    Run Keyword And Ignore Error    ${Cleanup}
+
+#-------------------------------------------------------------------------
+# โครงกลางของไฟล์ใน Testcase : อ่าน Excel ด้วย FOR loop ทดสอบทีละแถว เทียบผลตรงกัน 100% แล้วเขียนผลกลับ
+# ไฟล์ที่เรียกใช้ต้องประกาศตัวแปร ${DATA_FILE} ${SHEET} ${USECASE} ${SCREENSHOT_DIR}
+# ${COL_ACTUAL} ${COL_PF} (ตัว FOR loop อ่านทุกแถวเขียนไว้ในแต่ละไฟล์เอง)
+เปิดชุดทดสอบจาก Excel
+    [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
+    [Arguments]    ${Alias}
+    ลบภาพทั้งหมดในโฟลเดอร์    ${SCREENSHOT_DIR}
+    Open Excel Document    ${DATA_FILE}    ${Alias}
+    Open Test Browser
+
+ปิดชุดทดสอบ Excel
+    [Documentation]    บันทึกไฟล์ Excel แล้วปิดทุกอย่าง
+    Run Keyword And Ignore Error    เซฟ Excel อย่างปลอดภัย    ${DATA_FILE}
+    Run Keyword And Ignore Error    Close All Excel Documents
+    Close All Test Browsers
+
+ตัดสินผลและบันทึกลง Excel
+    [Documentation]    รับผลจาก "Run Keyword And Ignore Error ทำรายการ..." ของแถวนั้น
+    ...                -> เทียบ Actual กับ Expected แบบตรงกัน 100% -> ถ่ายภาพเมื่อไม่ผ่าน -> เขียนผลลง Excel -> เก็บกวาด -> Fail ถ้าไม่ผ่าน
+    ...                ActualResult เก็บเฉพาะข้อความที่ get text ได้จากระบบ ถ้าสคริปต์ล้มกลางทางให้เป็นค่าว่าง (สาเหตุดูใน log/report)
+    ...                ${Cleanup} คือคีย์เวิร์ดที่ใช้เก็บกวาดตอนจบแถว (ค่าเริ่มต้นปิด context)
+    [Arguments]    ${Status}    ${Out}    ${ExpectedResult}    ${TestCase}    ${Row}    ${Cleanup}=Close Test Context
+    IF    '${Status}' == 'FAIL'
+        ${Actual}=     Set Variable    ${EMPTY}
+        ${Verdict}=    Set Variable    FAIL
+        ${Reason}=     Set Variable    ${Out}
+    ELSE
+        ${Actual}=    Set Variable    ${Out}
+        ${Verdict}    ${Reason}=    Run Keyword And Ignore Error    เทียบผลจริงกับที่คาดหวัง    ${Actual}    ${ExpectedResult}
+    END
+
+    IF    '${Verdict}' == 'FAIL'
+        Run Keyword And Ignore Error    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TestCase}_FAILED    fullPage=True
+    END
+    ${Result}=    Set Variable If    '${Verdict}' == 'PASS'    Pass    Fail
+    Run Keyword And Ignore Error    บันทึกผลทดสอบลง Excel
+    ...    ${DATA_FILE}    ${SHEET}    ${Row}    ${COL_ACTUAL}    ${COL_PF}    ${Actual}    ${Result}
+    Run Keyword And Ignore Error    ${Cleanup}
+    IF    '${Verdict}' == 'FAIL'    Fail    ${Reason}
 
 #-------------------------------------------------------------------------
 # Add Cart Farmer : ไม่มีการกรอกฟอร์ม เป็นคีย์เวิร์ด "ค้นหา - กดปุ่ม - ดูตะกร้า" ล้วน ๆ
@@ -242,12 +369,8 @@ Open Search Equipment Page
 
 Select Equipment Type
     [Documentation]    เลือกประเภทอุปกรณ์จาก dropdown คืน True เมื่อกรองด้วยประเภทที่ระบุจริง ๆ
-    ...
-    ...                หน้าค้นหากรองด้วยประเภท "และ" ชื่ออุปกรณ์พร้อมกัน ถ้า dropdown ค้างอยู่ที่ประเภทอื่น
-    ...                อุปกรณ์ที่พิมพ์ค้นหาจะไม่ขึ้นบนหน้าจอเลย ค่าว่างจึงไม่ได้แปลว่า "ไม่ต้องแตะ dropdown"
-    ...                แต่แปลว่าให้เลือกตัวเลือกที่หมายถึงทุกประเภท เพื่อล้างตัวกรองของรอบก่อนออกก่อนค้นหา
-    ...
-    ...                หาประเภทที่ระบุไม่เจอจะเตือนใน log แทนการล้ม เพราะกรณีทดสอบสนใจผลการค้นหาไม่ใช่ตัวกรอง
+    ...                ค่าว่างจะเลือกตัวเลือก "ทุกประเภท" เพื่อล้างตัวกรองรอบก่อน (dropdown ค้างจะบังผลค้นหา)
+    ...                หาประเภทไม่เจอจะ log warning แทนการล้ม test
     [Arguments]    ${Type}
 
     ${Ok}    ${Options}=    Run Keyword And Ignore Error    Get Select Options    ${Select_EQType}
@@ -290,11 +413,8 @@ Select Equipment Type
     RETURN    ${True}
 
 Select Equipment Type Matching
-    [Documentation]    เลือกประเภทใน dropdown ให้เข้าคู่กับชื่ออุปกรณ์ที่กำลังจะค้นหา คืน True เมื่อได้เลือกประเภทเจาะจงจริง
-    ...
-    ...                หน้าค้นหากรองด้วยประเภท "และ" ชื่ออุปกรณ์พร้อมกัน ถ้า dropdown ค้างอยู่ที่ประเภทอื่น
-    ...                อุปกรณ์ที่พิมพ์ค้นหาจะไม่ขึ้นบนหน้าจอเลย คีย์เวิร์ดนี้จึงหาประเภทจากคำค้นหาให้เอง
-    ...                ไม่มีตัวเลือกไหนเข้าคู่ จะเลือก "ทุกประเภท" แทน เพราะไม่กรองยังดีกว่ากรองผิดประเภท
+    [Documentation]    เลือกประเภทใน dropdown ให้เข้าคู่กับชื่ออุปกรณ์ที่กำลังค้นหา คืน True เมื่อได้เลือกประเภทเจาะจงจริง
+    ...                ไม่มีตัวเลือกเข้าคู่จะเลือก "ทุกประเภท" แทน (ไม่กรองยังดีกว่ากรองผิดประเภท)
     [Arguments]    ${Name}
 
     ${Len}=    Get Length    ${Name}
@@ -472,9 +592,7 @@ Is Booking Form Displayed
     RETURN    ${Displayed}
 
 เทียบปีให้เป็น ค.ศ.
-    [Documentation]    ทำให้ปีที่อ่านมาอยู่ในระบบเดียวกันก่อนนำไปเทียบ ปีที่มากกว่า 2400 ถือว่าเป็น พ.ศ.
-    ...                เป็นจุดเดียวในโปรเจกต์ที่มีการบวกลบปี ที่อื่นใช้ค่าปีตามที่เขียนไว้ในไฟล์ทดสอบตรง ๆ
-    ...                หน้าเว็บจะแสดงหัวปฏิทินเป็น ค.ศ. หรือ พ.ศ. ก็ทำงานได้เหมือนกัน
+    [Documentation]    แปลงปีให้เป็น ค.ศ. ก่อนนำไปเทียบ (ปีที่มากกว่า 2400 ถือว่าเป็น พ.ศ.) รองรับหัวปฏิทินทั้งสองระบบ
     [Arguments]    ${Year}
     ${Year}=      Convert To Integer    ${Year}
     ${Result}=    Evaluate    ${Year} - ${THAI_YEAR_OFFSET} if ${Year} > 2400 else ${Year}
@@ -482,8 +600,7 @@ Is Booking Form Displayed
 
 หากล่องปฏิทินของช่องที่ระบุ
     [Documentation]    คืน selector ของกล่อง .date-picker-container ที่ครอบช่องวันที่นั้น
-    ...                หน้าเว็บสร้าง DatePickerWithValidation หนึ่งกล่องต่อหนึ่งช่อง และห่อด้วย div คลาสนี้เสมอ
-    ...                ทุก locator ของปฏิทินต้องอ้างจากกล่องนี้ ไม่งั้นจะไปโดนปฏิทินของอีกช่องเมื่อเปิดพร้อมกัน 2 กล่อง
+    ...                ต้องอ้างจากกล่องนี้เสมอ ไม่งั้นจะไปโดนปฏิทินของอีกช่องเมื่อเปิดพร้อมกัน 2 กล่อง
     [Arguments]    ${Field}
     RETURN    xpath=(${Field}/ancestor::div[contains(@class,'date-picker-container')])[last()]
 
@@ -532,9 +649,8 @@ Is Booking Form Displayed
     RETURN    ${False}
 
 หาวันแรกที่ระบบเปิดให้เลือก
-    [Documentation]    เปิดปฏิทินของช่องที่ระบุ แล้วไล่หาวันแรกที่ระบบยังเปิดให้เลือก (ดูไปข้างหน้าไม่เกิน 12 เดือน)
-    ...                คืนเป็น "ปปปป-ดด-วว" (ค.ศ.) หรือคืนค่าว่างเมื่อไม่พบวันว่างเลย
-    ...                ใช้กับกรณีทดสอบที่ต้องการแค่ "วันที่ที่ถูกต้องวันหนึ่ง" ไม่ได้เจาะจงวัน จึงไม่ต้องพึ่งสภาพข้อมูลในฐานข้อมูล
+    [Documentation]    ไล่หาวันแรกที่ระบบยังเปิดให้เลือก (มองไปข้างหน้าไม่เกิน 12 เดือน) คืน "ปปปป-ดด-วว" หรือค่าว่างถ้าไม่พบ
+    ...                ใช้เมื่อกรณีทดสอบต้องการแค่วันที่ถูกต้องวันหนึ่ง ไม่ต้องพึ่งสภาพข้อมูลในฐานข้อมูล
     [Arguments]    ${Field}
     ${Picker}=    หากล่องปฏิทินของช่องที่ระบุ    ${Field}
     ${Opened}=    เปิดปฏิทินให้ได้    ${Field}    ${Picker}
@@ -565,12 +681,8 @@ Is Booking Form Displayed
     RETURN    ${EMPTY}
 
 Pick Date From Calendar
-    [Documentation]    เปิดปฏิทินของช่องที่ระบุแล้วกดเลือกวันที่เป้าหมาย
-    ...                คืนค่าที่อ่านได้จากช่องเมื่อเลือกสำเร็จ / คืนข้อความบอกเหตุเมื่อเลือกไม่ได้
-    ...
-    ...                ช่องวันที่เป็นปุ่มสลับเปิด-ปิด (onClick -> setIsOpen(!isOpen)) ถ้ากดตอนปฏิทินเปิดอยู่มันจะปิด
-    ...                จึงต้องเช็คก่อนว่าเปิดอยู่หรือยังแล้วค่อยกด ไม่ใช่กดทิ้งไปเลย
-    ...                และหลังเลือกวันแล้วหน้าเว็บปิดปฏิทินให้เอง (setIsOpen(false)) จึงไม่ต้องสั่งปิดซ้ำ
+    [Documentation]    เปิดปฏิทินของช่องที่ระบุแล้วกดเลือกวันที่เป้าหมาย คืนค่าที่อ่านได้เมื่อสำเร็จ / คืนข้อความบอกเหตุเมื่อเลือกไม่ได้
+    ...                ช่องวันที่เป็นปุ่มสลับเปิด-ปิด ต้องเช็คว่าเปิดอยู่หรือยังก่อนกด (กดซ้ำจะปิด) หลังเลือกวันแล้วปฏิทินปิดให้เอง
     [Arguments]    ${Field}    ${Day}    ${MonthIndex}    ${Display}
 
     ${Picker}=    หากล่องปฏิทินของช่องที่ระบุ    ${Field}
@@ -602,9 +714,8 @@ Pick Date From Calendar
     RETURN    ${Value}
 
 เปิดปฏิทินให้ได้
-    [Documentation]    ทำให้ปฏิทินของช่องนี้อยู่ในสถานะ "เปิด" คืน True เมื่อเปิดได้
-    ...                เปิดอยู่แล้วไม่ต้องกดซ้ำ เพราะการกดช่องคือการสลับเปิด-ปิด กดซ้ำจะกลายเป็นปิด
-    ...                ถ้าปฏิทินของอีกช่องเปิดค้างอยู่ต้องปิดก่อน เพราะกล่องมันลอยทับช่องนี้จนกดไม่โดน
+    [Documentation]    ทำให้ปฏิทินของช่องนี้อยู่ในสถานะ "เปิด" คืน True เมื่อเปิดได้ (เปิดอยู่แล้วไม่กดซ้ำ เพราะกดซ้ำจะปิด)
+    ...                ถ้าปฏิทินของอีกช่องเปิดค้างอยู่ ต้องปิดก่อนเพราะมันลอยทับช่องนี้
     [Arguments]    ${Field}    ${Picker}
     ${Today}=     Set Variable    ${Picker} >> xpath=.//button[normalize-space(text())='วันนี้']
 
@@ -867,11 +978,18 @@ Click Owner Login Button
 #-------------------------------------------------------------------------
 # Add Equipment Owner : ฟอร์มเปิดจากปุ่มบนหน้ารายการอุปกรณ์ ไม่ได้เข้าจาก URL ตรง ๆ
 Open Add Equipment Page
-    [Documentation]    เปิดหน้ารายการอุปกรณ์แล้วกดปุ่ม "เพิ่มอุปกรณ์" ให้ฟอร์มแสดงขึ้นมา
-    ...                ใช้ Go To ไม่ใช่ New Context เพื่อไม่ให้เสียสถานะเข้าสู่ระบบที่ทำไว้ตอนเปิดชุดทดสอบ
+    [Documentation]    เปิดหน้ารายการอุปกรณ์ เลือกประเภทอุปกรณ์ แล้วกดปุ่ม "เพิ่มอุปกรณ์" ให้ฟอร์มแสดงขึ้นมา
+    ...                ปุ่มถูกปิดใช้งานจนกว่าจะเลือกประเภทก่อน ${EquipmentType} ต้องตรงกับข้อมูลที่จะกรอกในฟอร์ม
+    [Arguments]    ${EquipmentType}=${EMPTY}
     Go To                      ${AddEQ_ownerURL}
     Wait For Load State        domcontentloaded    ${DEFAULT_TIMEOUT}
-    Wait For Elements State    ${Btn_AddEQ}        visible    ${DEFAULT_TIMEOUT}
+
+    Select Add Equipment Type    ${EquipmentType}
+    ${Enabled}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Btn_AddEQ}    enabled    ${DEFAULT_TIMEOUT}
+    Should Be True    ${Enabled}
+    ...    msg=ปุ่ม "เพิ่มอุปกรณ์" ยังถูกปิดใช้งานหลังเลือกประเภท "${EquipmentType}" จึงเปิดฟอร์มไม่ได้
+
     Click                      ${Btn_AddEQ}
     Wait For Elements State    ${Text_EQName}      visible    ${DEFAULT_TIMEOUT}
 
@@ -880,6 +998,55 @@ Is Equipment Form Displayed
     ...                ฟอร์มปิดลงหลังบันทึกสำเร็จ จึงใช้เป็นตัวชี้วัดว่าระบบรับข้อมูลแล้ว
     ${Displayed}=    Is Element Visible    ${Text_EQName}
     RETURN    ${Displayed}
+
+Get Native Validation Messages
+    [Documentation]    อ่านข้อความตรวจสอบของเบราว์เซอร์จากทุกช่องในฟอร์มเพิ่มอุปกรณ์ คืนเป็นลิสต์
+    ...                ฟอร์มใช้ HTML required เบราว์เซอร์กันไว้ด้วย bubble เอง (ไม่ใช่ element ใน DOM) จึงอ่านจาก property validationMessage แทน
+    ...                ฟอร์มปิดไปแล้วคืนลิสต์ว่างทันที และลด timeout ระหว่างอ่านเพื่อไม่ให้เสียเวลารอ
+    ${Messages}=    Create List
+    ${FormOpen}=    Is Equipment Form Displayed
+    IF    not ${FormOpen}    RETURN    ${Messages}
+
+    Set Browser Timeout    ${SHORT_TIMEOUT}
+    FOR    ${Selector}    IN
+    ...    ${Text_EQName}       ${Text_EQDetail}      ${Text_EQPrice}    ${Select_EQStatus}
+    ...    ${Text_EQFeature}    ${Text_EQAddress}     ${Img_EQ}
+        ${Ok}    ${Msg}=    Run Keyword And Ignore Error
+        ...    Get Property    ${Selector}    validationMessage
+        IF    '${Ok}' == 'FAIL'    CONTINUE
+        ${Len}=    Get Length    ${Msg}
+        IF    ${Len} > 0    Append To List    ${Messages}    ${Msg}
+    END
+    Set Browser Timeout    ${DEFAULT_TIMEOUT}
+    RETURN    ${Messages}
+
+Select Add Equipment Type
+    [Documentation]    เลือกประเภทอุปกรณ์จาก dropdown บน "หน้ารายการอุปกรณ์" ของเจ้าของ (คนละตัวกับ dropdown หน้าค้นหาฝั่ง Farmer)
+    ...                ค่าว่างหมายถึงเลือกตัวเลือกเริ่มต้น "${EQTYPE_NONE}" (ปุ่ม "เพิ่มอุปกรณ์" จะยังถูกปิดใช้งานอยู่)
+    [Arguments]    ${EquipmentType}
+
+    ${Ok}    ${Options}=    Run Keyword And Ignore Error    Get Select Options    ${Select_AddEQType}
+    IF    '${Ok}' == 'FAIL'
+        Log    ไม่พบ dropdown ประเภทอุปกรณ์ด้วย locator ${Select_AddEQType} จึงข้ามการเลือกประเภท    level=WARN
+        RETURN
+    END
+
+    # ค่าว่างแปลว่าไม่เลือกประเภท คือเลือกตัวเลือก "${EQTYPE_NONE}" (ค่าเริ่มต้นของ dropdown)
+    # เลือกให้ชัดเจนแทนการปล่อยผ่าน เพื่อล้างประเภทที่อาจค้างจากกรณีทดสอบก่อนหน้า
+    IF    '${EquipmentType}' == '${EMPTY}'
+        Run Keyword And Ignore Error
+        ...    Select Options By    ${Select_AddEQType}    label    ${EQTYPE_NONE}
+        RETURN
+    END
+
+    ${Labels}=    Evaluate    [str(o.get("label", "")).strip() for o in $Options]
+    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ในเงื่อนไขของ comprehension
+    ${Matched}=    Evaluate    next(filter(lambda l, s=$EquipmentType: l == s, $Labels), "")
+    IF    '${Matched}' == '${EMPTY}'
+        Log    ไม่มีประเภท "${EquipmentType}" ใน dropdown (มี ${Labels}) จึงไม่เลือกประเภท    level=WARN
+        RETURN
+    END
+    Select Options By    ${Select_AddEQType}    label    ${Matched}
 
 Input Equipment Name
     [Arguments]    ${EquipmentName}
@@ -938,8 +1105,10 @@ Click Save Equipment Button
     RETURN    ${Clicked}
 
 Click Cancel Equipment Button
-    [Documentation]    กดปุ่ม "ยกเลิก" เพื่อปิดฟอร์ม ใช้ Ignore Error เพราะบางกรณีฟอร์มปิดไปแล้ว
-    Run Keyword And Ignore Error    Click    ${Btn_CancelEQ}
+    [Documentation]    กดปุ่ม "ยกเลิก" เพื่อปิดฟอร์ม ข้ามไปเลยถ้าฟอร์มปิดไปแล้ว
+    ...                (เดิมกดตรง ๆ แล้วรอ 30 วินาทีทุกครั้งที่ฟอร์มปิดไปแล้วหลังบันทึกสำเร็จ)
+    ${HasButton}=    Is Element Visible    ${Btn_CancelEQ}
+    IF    ${HasButton}    Run Keyword And Ignore Error    Click    ${Btn_CancelEQ}
 
 #-------------------------------------------------------------------------
 # Approve Booking Owner : หน้ารายการจองของเจ้าของอุปกรณ์

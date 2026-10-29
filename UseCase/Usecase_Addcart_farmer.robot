@@ -1,11 +1,7 @@
 *** Settings ***
-Documentation     TC03 - Add Cart Farmer (Usecase) | ทดสอบยูสเคส "เพิ่มอุปกรณ์ลงตะกร้า" ของเกษตรกร (TC03_F01-F07)
-...               ย้ายมาจาก Testcase/Addcart_farmer.robot ทั้งไฟล์ เพราะยูสเคสนี้ไม่มีฟอร์มให้กรอก
-...               จึงไม่มีการตรวจข้อความแจ้งเตือนรายฟิลด์ มีแต่กรณีทดสอบเชิงกระบวนการล้วน ๆ
-...               ใช้ข้อมูลคงที่ (fix ค่าตายตัวในสคริปต์) ไม่อ่าน/เขียน Excel อีกต่อไป
-...               ทุกกรณียกเว้น TC03_F05 ต้องเข้าสู่ระบบก่อน จึงขึ้นกับยูสเคส TC01 Login
-...               อ้างอิงจากเอกสาร Test Case หน้า 65-68
-Metadata          System      ระบบเว็บศูนย์กลางให้บริการเช่าอุปกรณ์ทางการเกษตร (SRS v7.0)
+Documentation     TC03 - Add Cart Farmer (Usecase) | อ้างอิงเอกสาร Test Case หน้า 65-68 (TC03_F01-F07)
+...               ทดสอบเชิงกระบวนการล้วน ๆ (ไม่มีฟอร์มให้กรอก) ใช้ข้อมูลคงที่ในสคริปต์ ไม่อ่าน/เขียน Excel
+...               Pre-Condition: ทุกกรณียกเว้น F05 ต้องเข้าสู่ระบบก่อน (ขึ้นกับยูสเคส TC01 Login)
 Metadata          Use Case    TC03 Add Cart Farmer
 
 Resource          ../Resources/keywords.robot
@@ -13,20 +9,24 @@ Library           OperatingSystem
 Library           String
 Library           Collections
 
-Suite Setup       เปิดชุดทดสอบ
+Suite Setup       เตรียมชุดทดสอบยูสเคส
 Suite Teardown    ปิดชุดทดสอบ
 Test Teardown     เก็บผลท้ายกรณีทดสอบ
 
-
 *** Variables ***
 # ---------- ไฟล์และโฟลเดอร์ ----------
-${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot
 ${USECASE}            TC03_Usecase_AddCart_Farmer
+${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot/${USECASE}
 
-# ---------- ข้อความที่ใช้ตรวจการเข้าสู่ระบบ ----------
-${SUCCESS_KEYWORD}    สำเร็จ
-${Popup_Success}      text=${SUCCESS_KEYWORD}
+# ---------- ข้อความที่คาดหวังตามเอกสารเทสเคส (เทียบตรงกัน 100%) ----------
+${EXP_LOGIN_SUCCESS}      เข้าสู่ระบบสำเร็จ                     # AC01-01
+${EXP_LOGIN_REQUIRED}     โปรดเข้าสู่ระบบก่อนดำเนินการต่อ        # AC05-02
+# ข้อความบนปุ่มการ์ด ใช้ ${State_InCart} / ${State_Unavailable} จาก variables.robot (อยู่ในตะกร้าแล้ว / ไม่พร้อมให้เช่า)
 ${POPUP_TIMEOUT}      10s
+
+# ---------- ชื่ออุปกรณ์บนการ์ด : การ์ดใบแรกที่ยังกดเพิ่มได้ และรายการแรกในกล่องตะกร้า ----------
+${Card_AddableName}   xpath=(//button[contains(.,'เพิ่มในตะกร้า')]/ancestor::div[.//h3][1]//h3)[1]
+${Cart_ItemName}      xpath=(//button[@title='ลบออกจากตะกร้า']/ancestor::div[.//h3][1]//h3)[1]
 
 # ---------- บัญชีคงที่ : ผู้ใช้สร้างไว้ล่วงหน้าในระบบจริงแล้ว (บัญชีเดียวกับ Usecase_Login_farmer) ----------
 ${LOGIN_USERNAME}     somchaikaew
@@ -42,107 +42,68 @@ ${UNAVAIL_NAME}       เครื่องพ่นสารการเกษ�
 ${TC_ID}             UNKNOWN
 ${ACTUAL_MESSAGE}    ${EMPTY}
 
-
 *** Test Cases ***
 TC03_F01 - ค้นหาอุปกรณ์แล้วเพิ่มลงตะกร้าสำเร็จ
-    [Documentation]    Basic Flow : ค้นหาแล้วกดเพิ่มในตะกร้า ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการในตะกร้า
+    #Basic Flow : ค้นหาแล้วกดเพิ่มในตะกร้า ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการในตะกร้า
     Set Test Variable    ${TC_ID}    TC03_F01
     ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
     กรณี TC03_F01    ${Data}
 
 TC03_F02 - เพิ่มอุปกรณ์รายการซ้ำ
-    [Documentation]    Invalid : กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้ และตะกร้าต้องเหลือเพียง 1 รายการ
+    #Invalid : กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้ และตะกร้าต้องเหลือเพียง 1 รายการ
     Set Test Variable    ${TC_ID}    TC03_F02
     ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
     กรณี TC03_F02    ${Data}
 
 TC03_F03 - เพิ่มอุปกรณ์ที่ไม่พร้อมใช้งาน
-    [Documentation]    AC01-01 / AC01-02 : อุปกรณ์ไม่พร้อมใช้งาน ต้องเพิ่มลงตะกร้าไม่ได้
+    #TC03-AC03 : อุปกรณ์ไม่พร้อมใช้งาน ปุ่มต้องเป็น "ไม่พร้อมให้เช่า" และเพิ่มลงตะกร้าไม่ได้
     Set Test Variable    ${TC_ID}    TC03_F03
     ${Data}=    สร้างข้อมูลทดสอบ    ${UNAVAIL_TYPE}    ${UNAVAIL_NAME}
     กรณี TC03_F03    ${Data}
 
 TC03_F04 - ล้างตะกร้าแล้วตะกร้าต้องว่าง
-    [Documentation]    เพิ่มอุปกรณ์ 1 ชิ้น แล้วกดปุ่ม "ล้างตะกร้า" ตะกร้าต้องว่าง
+    #เพิ่มอุปกรณ์ 1 ชิ้น แล้วกดปุ่ม "ล้างตะกร้า" ตะกร้าต้องว่าง
     Set Test Variable    ${TC_ID}    TC03_F04
     ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
     กรณี TC03_F04    ${Data}
 
 TC03_F05 - เพิ่มลงตะกร้าโดยยังไม่เข้าสู่ระบบ
-    [Documentation]    ตรวจ Pre-Condition ของเอกสาร : ผู้ใช้ต้องเข้าสู่ระบบก่อนจึงจะเพิ่มลงตะกร้าได้
+    #ตรวจ Pre-Condition ของเอกสาร : ผู้ใช้ต้องเข้าสู่ระบบก่อนจึงจะเพิ่มลงตะกร้าได้
     Set Test Variable    ${TC_ID}    TC03_F05
     ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
     กรณี TC03_F05    ${Data}
 
 TC03_F06 - ตะกร้าคงอยู่หลังรีเฟรชหน้า
-    [Documentation]    ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
+    #ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
     Set Test Variable    ${TC_ID}    TC03_F06
     ${Data}=    สร้างข้อมูลทดสอบ    ${EQUIP_TYPE}    ${EQUIP_NAME}
     กรณี TC03_F06    ${Data}
 
 TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละรายการ
-    [Documentation]    เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้า แล้วลบทีละรายการจนตะกร้าว่าง
-    ...                เว้นประเภทและชื่ออุปกรณ์ว่างไว้ เพื่อให้ระบบแสดงอุปกรณ์ทั้งหมด
+    #เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้าแล้วลบทีละรายการจนว่าง (เว้นประเภท/ชื่อไว้เพื่อให้แสดงอุปกรณ์ทั้งหมด)
     Set Test Variable    ${TC_ID}    TC03_F07
     ${Data}=    สร้างข้อมูลทดสอบ    ${EMPTY}    ${EMPTY}
     กรณี TC03_F07    ${Data}
 
-
 *** Keywords ***
 # =====================================================================
-# 1. การเตรียมและปิดชุดทดสอบ
-# =====================================================================
-
-เปิดชุดทดสอบ
-    [Documentation]    ล้างภาพของรอบก่อน และเปิดเบราว์เซอร์ (ไม่ต้องเปิด Excel เพราะไฟล์นี้ fix ค่าตายตัว ไม่มีการเขียนผลกลับ)
-    Create Directory    ${SCREENSHOT_DIR}
-    ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
-    Open Test Browser
-
-ลบภาพของรอบก่อน
-    [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่แตะภาพของยูสเคสอื่นที่อยู่โฟลเดอร์เดียวกัน
-    ...                และไม่ลบตัวโฟลเดอร์ เพราะ OneDrive มักคืน Access denied
-    [Arguments]    ${Folder}
-    ${Files}=    List Files In Directory    ${Folder}    ${USECASE}_*.png
-    FOR    ${File}    IN    @{Files}
-        ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
-        IF    not ${Removed}    Log    ลบไฟล์ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
-    END
-
-ปิดชุดทดสอบ
-    [Documentation]    ปิดเบราว์เซอร์ทั้งหมด
-    Close All Test Browsers
-
-เก็บผลท้ายกรณีทดสอบ
-    [Documentation]    เก็บภาพเมื่อไม่ผ่าน แล้วปิด context (ไม่มีการเขียนผลกลับ Excel เพราะไฟล์นี้ fix ค่าตายตัว)
-    IF    '${TEST STATUS}' == 'FAIL'
-        Run Keyword And Ignore Error
-        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
-    END
-    # Ignore Error เพราะบางกรณีอาจยังไม่มี context ถูกเปิด
-    Run Keyword And Ignore Error    Close Test Context
-
-
-# =====================================================================
-# 2. เตรียมข้อมูลทดสอบ
+# 1. เตรียมข้อมูลทดสอบ
 # =====================================================================
 
 สร้างข้อมูลทดสอบ
-    [Documentation]    สร้าง Dictionary ข้อมูลสำหรับกรณีทดสอบ ใช้บัญชี login คงที่ร่วมกับประเภท/ชื่ออุปกรณ์ที่ระบุ
+    #สร้าง Dictionary ข้อมูลสำหรับกรณีทดสอบ ใช้บัญชี login คงที่ร่วมกับประเภท/ชื่ออุปกรณ์ที่ระบุ
     [Arguments]    ${EquipmentType}    ${EquipmentName}
     ${Data}=    Create Dictionary
     ...    Username=${LOGIN_USERNAME}         Password=${LOGIN_PASSWORD}
     ...    EquipmentType=${EquipmentType}     EquipmentName=${EquipmentName}
     RETURN    ${Data}
 
-
 # =====================================================================
-# 3. กรณีทดสอบของยูสเคส (TC03_F01 - TC03_F07)
+# 2. กรณีทดสอบของยูสเคส (TC03_F01 - TC03_F07)
 # =====================================================================
 
 กรณี TC03_F01
-    [Documentation]    Basic Flow : ค้นหาแล้วกดเพิ่มในตะกร้า
-    ...                ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการที่ถูกชิ้นอยู่ในตะกร้า
+    #Basic Flow: ค้นหาแล้วกดเพิ่มในตะกร้า ต้องได้ปุ่ม "อยู่ในตะกร้าแล้ว" และมี 1 รายการในตะกร้า
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -150,36 +111,27 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     ${Cards}=      ค้นหาอุปกรณ์    ${Data}[EquipmentType]    ${Data}[EquipmentName]
     ${Summary}=    Get Found Count Text
-    เก็บภาพหลักฐาน    ผลการค้นหา
     Should Be True    ${Cards} > 0
     ...    msg=ค้นหา "${Data}[EquipmentName]" แล้วไม่พบอุปกรณ์ จึงยังทดสอบการเพิ่มตะกร้าไม่ได้ (${Summary})
 
-    # ปุ่มบนการ์ดคือสิ่งที่ระบบใช้บอกสถานะ จึงอ่านทั้งก่อนและหลังกด เพื่อยืนยันว่าเปลี่ยนสถานะจริง
-    ${Before}=     Get Equipment Button State
-    ${Clicked}=    Click Add To Cart
-    ${After}=      Get Equipment Button State
-    เก็บภาพหลักฐาน    กดเพิ่มในตะกร้า
-
+    # AC01-03 : จำชื่ออุปกรณ์บนการ์ดที่จะกด แล้วกดเพิ่ม ปุ่มต้องเป็น "อยู่ในตะกร้าแล้ว" ตะกร้ามี 1 รายการ และชื่อในตะกร้าต้องตรงกับการ์ด
+    ${CardName}=    Get Text    ${Card_AddableName}
+    ${Clicked}=     Click Add To Cart
+    ${After}=       Get Equipment Button State
     ${Count}=       เปิดตะกร้าและนับรายการ
-    ${CartText}=    Get Cart Text
-    เก็บภาพหลักฐาน    รายการในตะกร้า
+    ${CartName}=    อ่านชื่อรายการแรกในตะกร้า
 
-    # เขียนข้อความที่ระบบแสดงจริงลงคอลัมน์ ActualResult ไม่ใช่ประโยคที่สคริปต์แต่งขึ้น
     บันทึกผลที่ได้จริง    ${After}
-    Log    ปุ่มก่อนกด "${Before}" หลังกด "${After}" และในตะกร้ามี ${Count} รายการ    level=INFO
+    Log    การ์ด "${CardName}" ปุ่มหลังกด "${After}" ในตะกร้ามี ${Count} รายการ ชื่อ "${CartName}"    level=INFO
 
-    Should Be True    ${Clicked}
-    ...    msg=ปุ่ม "${Before}" ถูกปิดใช้งาน จึงเพิ่มอุปกรณ์ลงตะกร้าไม่ได้
-    Should Be Equal    ${After}    ${State_InCart}
-    ...    msg=กดเพิ่มลงตะกร้าแล้ว แต่ปุ่มบนการ์ดยังเป็น "${After}" ไม่ได้เปลี่ยนเป็น "${State_InCart}"
-    Should Be Equal As Integers    ${Count}    ${1}
+    Should Be True    ${Clicked}    msg=ปุ่มเพิ่มในตะกร้าถูกปิดใช้งาน จึงเพิ่มอุปกรณ์ลงตะกร้าไม่ได้
+    เทียบผลจริงกับที่คาดหวัง       ${After}       ${State_InCart}
+    Should Be Equal As Integers    ${Count}       ${1}
     ...    msg=กดเพิ่มในตะกร้า 1 ครั้ง แต่ในตะกร้ามี ${Count} รายการ
-    Should Contain    ${CartText}    ${Data}[EquipmentName]
-    ...    msg=ในตะกร้าไม่มีอุปกรณ์ชื่อ "${Data}[EquipmentName]" ที่เพิ่งเพิ่มไป
+    เทียบผลจริงกับที่คาดหวัง       ${CartName}    ${CardName}
 
 กรณี TC03_F02
-    [Documentation]    ตามเอกสารข้อ Invalid : กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้
-    ...                และในตะกร้าต้องเหลือเพียง 1 รายการ
+    #Invalid: กดอุปกรณ์ชิ้นเดิมซ้ำครั้งที่สองต้องกดไม่ได้ ตะกร้าต้องเหลือเพียง 1 รายการ
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -194,15 +146,15 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ${AfterFirst}=    Get Equipment Button State
     Should Be True    ${First}
     ...    msg=เพิ่มอุปกรณ์ครั้งแรกไม่สำเร็จ จึงยังทดสอบการเพิ่มซ้ำไม่ได้
+    # AC02-02 : ครั้งแรกปุ่มต้องเปลี่ยนเป็น "อยู่ในตะกร้าแล้ว"
+    เทียบผลจริงกับที่คาดหวัง    ${AfterFirst}    ${State_InCart}
 
     # ---------- ครั้งที่ 2 : ลองกดทั้งปุ่มเดิมและปุ่มที่เปลี่ยนข้อความแล้ว ต้องกดไม่ได้ทั้งสองทาง ----------
     ${Second}=    Click Add To Cart
     ${Retry}=     Click Button If Enabled    ${Btn_InCart} >> nth=0
     ${State}=     Get Equipment Button State
-    เก็บภาพหลักฐาน    กดเพิ่มซ้ำ
 
     ${Count}=    เปิดตะกร้าและนับรายการ
-    เก็บภาพหลักฐาน    รายการในตะกร้า
 
     # ระบบกันการเพิ่มซ้ำด้วยการเปลี่ยนสถานะปุ่ม จึงบันทึกข้อความบนปุ่มเป็นผลที่ได้จริง
     บันทึกผลที่ได้จริง    ${State}
@@ -213,14 +165,12 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ...    msg=ระบบยังให้กดปุ่ม "${State_AddToCart}" ของอุปกรณ์ที่อยู่ในตะกร้าแล้วได้
     Should Not Be True    ${Retry}
     ...    msg=ปุ่ม "${State_InCart}" ยังกดได้ ทั้งที่ควรถูกปิดใช้งาน
-    Should Be Equal    ${State}    ${State_InCart}
-    ...    msg=ปุ่มบนการ์ดเป็น "${State}" ไม่ใช่ "${State_InCart}" ระบบจึงไม่ได้กันการเพิ่มซ้ำไว้
+    เทียบผลจริงกับที่คาดหวัง    ${State}    ${State_InCart}
     Should Be Equal As Integers    ${Count}    ${1}
     ...    msg=กดเพิ่มอุปกรณ์ชิ้นเดิมซ้ำแล้วในตะกร้ามี ${Count} รายการ ทั้งที่ควรมีเพียง 1 รายการ
 
 กรณี TC03_F03
-    [Documentation]    ตามเอกสาร AC01-01 / AC01-02 : อุปกรณ์ที่ไม่พร้อมใช้งาน
-    ...                ระบบจะไม่แสดงหรือปิดปุ่มไว้ก็ได้ แต่ตะกร้าต้องยังว่าง
+    #AC03-02 : อุปกรณ์ไม่พร้อมใช้งาน ปุ่มบนการ์ดต้องเป็น "ไม่พร้อมให้เช่า" กดไม่ได้ และตะกร้าต้องว่าง
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -228,44 +178,23 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     ${Cards}=      ค้นหาอุปกรณ์    ${Data}[EquipmentType]    ${Data}[EquipmentName]
     ${Summary}=    Get Found Count Text
+    Should Be True    ${Cards} > 0
+    ...    msg=ค้นหา "${Data}[EquipmentName]" แล้วไม่พบอุปกรณ์ จึงตรวจปุ่มสถานะไม่ได้ (${Summary})
+
     ${State}=      Get Equipment Button State
-    เก็บภาพหลักฐาน    ผลการค้นหา
+    ${Clicked}=    Click Button If Enabled    ${Card_EQButtons} >> nth=0
+    ${Count}=      เปิดตะกร้าและนับรายการ
 
-    IF    ${Cards} == 0
-        # ระบบไม่แสดงอุปกรณ์ที่ไม่พร้อมใช้งานให้เลือกตั้งแต่แรก จึงไม่มีปุ่มให้อ่านสถานะ
-        ${Clicked}=    Set Variable    ${False}
-        ${Detail}=     Set Variable    ${Summary}
-    ELSE
-        ${Clicked}=    Click Add To Cart
-        # ระบบไม่มี popup แจ้งเตือน จึงใช้ข้อความบนปุ่มเป็นผลที่ได้จริงแทน
-        ${State}=      Get Equipment Button State
-        ${Detail}=     Set Variable    ${State}
-    END
-    เก็บภาพหลักฐาน    กดเพิ่มอุปกรณ์ที่ไม่พร้อมใช้งาน
+    บันทึกผลที่ได้จริง    ${State}
+    Log    ปุ่มบนการ์ด "${State}" กดได้ = ${Clicked} และในตะกร้ามี ${Count} รายการ    level=INFO
 
-    ${Count}=    เปิดตะกร้าและนับรายการ
-    เก็บภาพหลักฐาน    ตะกร้าหลังพยายามเพิ่ม
-
-    บันทึกผลที่ได้จริง    ${Detail}
-    Log    ผลการค้นหา "${Summary}" ปุ่มบนการ์ด "${State}" และในตะกร้ามี ${Count} รายการ    level=INFO
-
+    เทียบผลจริงกับที่คาดหวัง    ${State}    ${State_Unavailable}
+    Should Not Be True    ${Clicked}    msg=ปุ่ม "${State}" ของอุปกรณ์ที่ไม่พร้อมใช้งานยังกดได้
     Should Be Equal As Integers    ${Count}    ${0}
     ...    msg=ระบบเพิ่มอุปกรณ์ที่ไม่พร้อมใช้งานลงตะกร้าได้ ทั้งที่ไม่ควรอนุญาต
 
-    # ถ้าระบบแสดงอุปกรณ์ชิ้นนี้ ปุ่มบนการ์ดต้องบอกว่าเช่าไม่ได้ ไม่ใช่ปุ่มเพิ่มปกติ
-    IF    ${Cards} > 0
-        Should Be Equal    ${State}    ${State_Unavailable}
-        ...    msg=อุปกรณ์ที่ไม่พร้อมใช้งานแสดงปุ่ม "${State}" ทั้งที่ควรเป็น "${State_Unavailable}"
-    END
-
-    # ตรวจข้อความเฉพาะตอนที่กดปุ่มได้จริง ถ้าปุ่มถูกปิดไว้ก็ไม่มีข้อความแจ้งเตือนให้ตรวจ
-    IF    ${Clicked}
-        ข้อความต้องกล่าวถึง    ${Detail}    ไม่พร้อม    ไม่สามารถ    ไม่อนุญาต
-    END
-
 กรณี TC03_F04
-    [Documentation]    ตามเอกสาร TC05 Add cart ขั้นตอน Click clear cart / Verify empty cart
-    ...                เพิ่มอุปกรณ์ 1 ชิ้น แล้วกดปุ่ม "ล้างตะกร้า" ตะกร้าต้องว่าง
+    #TC05 Add cart (Click clear cart / Verify empty cart): เพิ่ม 1 ชิ้นแล้วล้างตะกร้า ต้องว่าง
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -281,14 +210,12 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     # เปิดกล่องตะกร้าค้างไว้ แล้วกดล้างในกล่องเดิม ไม่ปิดเปิดซ้ำเพราะปุ่มตะกร้าเป็นแบบสลับเปิด-ปิด
     ${Before}=    เปิดตะกร้าและนับรายการ
-    เก็บภาพหลักฐาน    ก่อนล้างตะกร้า
     Should Be Equal As Integers    ${Before}    ${1}
     ...    msg=ก่อนล้างตะกร้าควรมี 1 รายการ แต่พบ ${Before} รายการ
 
     ${Cleared}=     Click Clear Cart Button
     ${After}=       Get Cart Item Count
     ${CartText}=    Get Cart Text
-    เก็บภาพหลักฐาน    หลังล้างตะกร้า
     Close Cart
 
     บันทึกผลที่ได้จริง    ก่อนล้างมี ${Before} รายการ หลังล้างเหลือ ${After} รายการ
@@ -300,39 +227,28 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ...    msg=กดล้างตะกร้าแล้วยังเหลือ ${After} รายการ ทั้งที่ตะกร้าควรว่าง
 
 กรณี TC03_F05
-    [Documentation]    ตรวจ Pre-Condition ของเอกสาร : ผู้ใช้ต้องเข้าสู่ระบบก่อนจึงจะเพิ่มลงตะกร้าได้
-    ...                เข้าหน้าค้นหาโดยไม่เข้าสู่ระบบ แล้วกดเพิ่มในตะกร้า ระบบต้องกันไว้
+    #AC05-02 : ยังไม่เข้าสู่ระบบแล้วกดเพิ่มในตะกร้า ระบบต้องไม่ให้เพิ่ม และขึ้น popup "โปรดเข้าสู่ระบบก่อนดำเนินการต่อ"
     [Arguments]    ${Data}
 
     เปิดหน้าค้นหาอุปกรณ์โดยไม่เข้าสู่ระบบ
 
     ${Cards}=    ค้นหาอุปกรณ์    ${Data}[EquipmentType]    ${Data}[EquipmentName]
-    เก็บภาพหลักฐาน    ผลการค้นหาแบบยังไม่เข้าสู่ระบบ
     Should Be True    ${Cards} > 0
     ...    msg=ค้นหา "${Data}[EquipmentName]" แล้วไม่พบอุปกรณ์ จึงยังทดสอบการกันผู้ใช้ที่ยังไม่เข้าสู่ระบบไม่ได้
 
-    ${Clicked}=    Click Add To Cart
-    # ระบบกันด้วย popup ซึ่งคลุมทั้งหน้าจอ จึงอ่าน popup แทนการเปิดตะกร้า
-    # ถ้าไปกดปุ่มตะกร้าจะโดนบังจนกดไม่ลงและรอจน timeout 30 วินาที
-    ${Message}=     Get Popup Title
-    ${HasPopup}=    Is Element Visible    ${Btn_LoginPopup}
-    ${Url}=         Get Url
-    เก็บภาพหลักฐาน    หลังกดเพิ่มแบบยังไม่เข้าสู่ระบบ
-
-    ${Redirected}=    Evaluate    "login" in $Url
-    ${Detail}=        Set Variable If    '${Message}' != '${EMPTY}'    ${Message}
-    ...    กดปุ่มได้ = ${Clicked} | หน้าปัจจุบัน ${Url}
-    บันทึกผลที่ได้จริง    ${Detail}
-
-    ${Prevented}=    Evaluate    ${HasPopup} or (not ${Clicked}) or ${Redirected}
-    Should Be True    ${Prevented}
-    ...    msg=ระบบยอมให้เพิ่มอุปกรณ์ลงตะกร้าได้ ทั้งที่ผู้ใช้ยังไม่ได้เข้าสู่ระบบ (${Detail})
-
-    # ยืนยันว่า popup ที่ขึ้นมาพูดเรื่องเข้าสู่ระบบจริง ไม่ใช่ข้อความอื่น
-    IF    ${HasPopup}    ข้อความต้องกล่าวถึง    ${Message}    เข้าสู่ระบบ
+    Click Add To Cart
+    # popup คลุมทั้งหน้าจอ จึงอ่านหัวข้อ popup แทนการเปิดตะกร้า (กดปุ่มตะกร้าจะโดนบังจนรอ timeout)
+    ${HasPopup}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Popup_Title}    visible    ${POPUP_TIMEOUT}
+    ${Message}=    Set Variable    ${EMPTY}
+    IF    ${HasPopup}
+        ${Message}=    Get Popup Title
+    END
+    บันทึกผลที่ได้จริง    ${Message}
+    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${EXP_LOGIN_REQUIRED}
 
 กรณี TC03_F06
-    [Documentation]    ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
+    #ตะกร้าต้องคงอยู่หลังผู้ใช้รีเฟรชหน้า ไม่หายไปเมื่อโหลดหน้าใหม่
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -348,7 +264,6 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     ${Before}=    เปิดตะกร้าและนับรายการ
     Close Cart
-    เก็บภาพหลักฐาน    ก่อนรีเฟรช
     Should Be Equal As Integers    ${Before}    ${1}
     ...    msg=ก่อนรีเฟรชควรมี 1 รายการ แต่พบ ${Before} รายการ
 
@@ -358,7 +273,6 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     ${After}=       เปิดตะกร้าและนับรายการ
     ${CartText}=    Get Cart Text
-    เก็บภาพหลักฐาน    หลังรีเฟรช
     Close Cart
 
     บันทึกผลที่ได้จริง    ก่อนรีเฟรชมี ${Before} รายการ หลังรีเฟรชมี ${After} รายการ
@@ -368,8 +282,7 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ...    msg=รีเฟรชหน้าแล้วรายการในตะกร้าเปลี่ยนจาก ${Before} เป็น ${After} รายการ
 
 กรณี TC03_F07
-    [Documentation]    เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้า แล้วลบทีละรายการจนตะกร้าว่าง
-    ...                เว้นประเภทและชื่ออุปกรณ์ว่างไว้ เพื่อให้ระบบแสดงอุปกรณ์ทั้งหมด
+    #เพิ่มอุปกรณ์ 2 ชิ้นลงตะกร้าแล้วลบทีละรายการจนว่าง (เว้นประเภท/ชื่อไว้เพื่อให้แสดงอุปกรณ์ทั้งหมด)
     [Arguments]    ${Data}
 
     เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์    ${Data}
@@ -377,26 +290,22 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
 
     ค้นหาอุปกรณ์    ${Data}[EquipmentType]    ${Data}[EquipmentName]
     ${Available}=    Get Available Equipment Count
-    เก็บภาพหลักฐาน    ผลการค้นหา
     Should Be True    ${Available} >= 2
     ...    msg=มีอุปกรณ์ที่เพิ่มลงตะกร้าได้เพียง ${Available} ชิ้น จึงยังทดสอบการเพิ่มหลายชิ้นไม่ได้
 
     # กดเพิ่ม 2 ครั้ง ชิ้นแรกเปลี่ยนเป็น "อยู่ในตะกร้าแล้ว" ครั้งที่สองจึงไปตกที่อุปกรณ์ชิ้นถัดไปเอง
     ${First}=     Click Add To Cart
     ${Second}=    Click Add To Cart
-    เก็บภาพหลักฐาน    กดเพิ่ม 2 ชิ้น
     Should Be True    ${First} and ${Second}
     ...    msg=เพิ่มอุปกรณ์ไม่ครบ 2 ชิ้น (ชิ้นแรก ${First} ชิ้นที่สอง ${Second})
 
     ${Added}=    เปิดตะกร้าและนับรายการ
-    เก็บภาพหลักฐาน    ตะกร้าหลังเพิ่ม 2 ชิ้น
 
     # ---------- ลบทีละรายการ โดยเปิดกล่องตะกร้าค้างไว้ ----------
     Remove First Cart Item
     ${AfterFirstRemove}=    Get Cart Item Count
     Remove First Cart Item
     ${AfterSecondRemove}=    Get Cart Item Count
-    เก็บภาพหลักฐาน    ตะกร้าหลังลบทั้งหมด
     Close Cart
 
     บันทึกผลที่ได้จริง
@@ -409,13 +318,12 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     Should Be Equal As Integers    ${AfterSecondRemove}    ${0}
     ...    msg=ลบครบทุกรายการแล้วควรเหลือ 0 รายการ แต่พบ ${AfterSecondRemove} รายการ
 
-
 # =====================================================================
-# 4. ขั้นตอนย่อยของยูสเคส
+# 3. ขั้นตอนย่อยของยูสเคส
 # =====================================================================
 
 เข้าสู่ระบบและไปหน้าค้นหาอุปกรณ์
-    [Documentation]    ยูสเคสนี้ต้องเข้าสู่ระบบก่อน จึงเข้าสู่ระบบแล้วกดเข้าหน้าค้นหาอุปกรณ์
+    #ยูสเคสนี้ต้องเข้าสู่ระบบก่อน จึงเข้าสู่ระบบแล้วกดเข้าหน้าค้นหาอุปกรณ์
     [Arguments]    ${Data}
 
     Run Keyword And Ignore Error    Close Test Context
@@ -431,16 +339,21 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ${Clicked}=    Click Button If Enabled    ${Btn_Login}
     Should Be True    ${Clicked}    msg=ปุ่มเข้าสู่ระบบถูกปิดใช้งาน
 
-    ${Ok}=    Run Keyword And Return Status
-    ...    Wait For Elements State    ${Popup_Success}    visible    ${POPUP_TIMEOUT}
-    Should Be True    ${Ok}
-    ...    msg=เข้าสู่ระบบด้วยบัญชี "${Data}[Username]" ไม่สำเร็จ จึงยังทดสอบการเพิ่มตะกร้าไม่ได้
+    # AC01-01 : หัวข้อ popup ต้องเป็น "เข้าสู่ระบบสำเร็จ"
+    ${HasPopup}=    Run Keyword And Return Status
+    ...    Wait For Elements State    ${Popup_Title}    visible    ${POPUP_TIMEOUT}
+    ${Message}=    Set Variable    ${EMPTY}
+    IF    ${HasPopup}
+        ${Message}=    Get Popup Title
+    END
+    บันทึกผลที่ได้จริง    ${Message}
+    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${EXP_LOGIN_SUCCESS}
 
     Close Login Popup
     Open Search Equipment Page
 
 เปิดหน้าค้นหาอุปกรณ์โดยไม่เข้าสู่ระบบ
-    [Documentation]    เปิด context ใหม่ที่ยังไม่ได้เข้าสู่ระบบ แล้วเข้าหน้าค้นหาอุปกรณ์จากหน้าแรกของเว็บ
+    #เปิด context ใหม่ที่ยังไม่ได้เข้าสู่ระบบ แล้วเข้าหน้าค้นหาอุปกรณ์จากหน้าแรกของเว็บ
     Run Keyword And Ignore Error    Close Test Context
 
     New Context
@@ -455,7 +368,7 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ...    msg=เข้าหน้าค้นหาอุปกรณ์โดยไม่เข้าสู่ระบบไม่ได้ ระบบอาจบังคับให้เข้าสู่ระบบก่อนตั้งแต่หน้าแรก
 
 ค้นหาอุปกรณ์
-    [Documentation]    เลือกประเภทอุปกรณ์ (ถ้าระบุมา) แล้วพิมพ์ชื่ออุปกรณ์ลงช่องค้นหา คืนจำนวนการ์ดที่พบ
+    #เลือกประเภทอุปกรณ์ (ถ้าระบุมา) แล้วพิมพ์ชื่ออุปกรณ์ลงช่องค้นหา คืนจำนวนการ์ดที่พบ
     [Arguments]    ${Type}    ${Name}
     Select Equipment Type    ${Type}
     Input Search Equipment    ${Name}
@@ -466,7 +379,7 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     RETURN    ${Cards}
 
 เปิดตะกร้าและนับรายการ
-    [Documentation]    เปิดกล่องตะกร้าแล้วนับรายการข้างใน ถ้าเปิดไม่ได้ถือว่าตะกร้าว่าง
+    #เปิดกล่องตะกร้าแล้วนับรายการข้างใน ถ้าเปิดไม่ได้ถือว่าตะกร้าว่าง
     ${Opened}=    Open Cart
     IF    not ${Opened}
         Log    เปิดกล่องตะกร้าไม่ได้ ถือว่าไม่มีรายการในตะกร้า    level=INFO
@@ -475,27 +388,13 @@ TC03_F07 - เพิ่มหลายชิ้นแล้วลบทีละ
     ${Count}=    Get Cart Item Count
     RETURN    ${Count}
 
-
 # =====================================================================
-# 5. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล และเก็บหลักฐาน
+# 4. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล และเก็บหลักฐาน
 # =====================================================================
 
-บันทึกผลที่ได้จริง
-    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ ให้ teardown ใช้เขียน log เมื่อกรณีทดสอบไม่ผ่าน
-    [Arguments]    ${Text}
-    Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
-
-ข้อความต้องกล่าวถึง
-    [Documentation]    ยืนยันว่าข้อความที่ระบบตอบกลับมีคำที่เอกสารระบุไว้อย่างน้อยหนึ่งคำ
-    [Arguments]    ${Message}    @{Keywords}
-    ${Lower}=    Convert To Lower Case    ${Message}
-    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ใน comprehension
-    ${Matched}=    Evaluate    any(map(lambda k, t=$Lower: k.lower() in t, $Keywords))
-    Should Be True    ${Matched}
-    ...    msg=ข้อความ "${Message}" ไม่มีคำว่า ${Keywords} จึงไม่ตรงกับที่เอกสารกำหนดไว้
-
-เก็บภาพหลักฐาน
-    [Documentation]    บันทึกภาพหน้าจอไว้เป็นหลักฐานประกอบรายงาน ตั้งชื่อเป็น <ยูสเคส>_<รหัส>_<คำอธิบาย>
-    [Arguments]    ${Name}
-    Run Keyword And Ignore Error
-    ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
+อ่านชื่อรายการแรกในตะกร้า
+    #อ่านชื่ออุปกรณ์ของรายการแรกในกล่องตะกร้า (ต้องเปิดกล่องไว้ก่อน) ไม่มีรายการคืนค่าว่าง
+    ${Found}=    Is Element Visible    ${Cart_ItemName}
+    IF    not ${Found}    RETURN    ${EMPTY}
+    ${Name}=    Get Text    ${Cart_ItemName}
+    RETURN    ${Name}

@@ -10,8 +10,11 @@ ${VIEWPORT_HEIGHT}    ${1000}
 ${Base_URL}           http://localhost:3000
  
 # บัญชีทดสอบกลาง ทุกชุดทดสอบอ้างตัวแปรชุดนี้ เปลี่ยนบัญชีทีเดียวได้ทั้งโปรเจกต์
-${TEST_FARMER_USER}    PKFarmer01
-${TEST_FARMER_PASS}    PK01010101
+# weerapongintr ใช้ไม่ได้ : username ซ้ำหลายแถวใน DB (บั๊กจริง RF01-04 backend ไม่ปฏิเสธ username ซ้ำตอนสมัคร
+# บวกกับ Register_farmer.robot ถูกรันซ้ำหลายรอบ) เกษตรกรล้าง DB แล้วรัน Register ใหม่เฉพาะ TC02_004 จึงได้บัญชีสะอาด
+# ไม่ซ้ำ ไม่ชนกับ somchaikaew ที่เป็นบัญชีหลักของ Booking/Approve Booking (คนละคนกัน ตามที่การจองชนกันต้องใช้)
+${TEST_FARMER_USER}    somsrithon
+${TEST_FARMER_PASS}    Soms2400!
 ${TEST_OWNER_USER}     marker
 ${TEST_OWNER_PASS}     0000000000
  
@@ -67,7 +70,7 @@ ${Error_Message}            css=[class*="text-red"] >> visible=true
 # ปุ่มเข้าหน้าค้นหาอุปกรณ์บนหน้าหลัก จับเฉพาะคู่สี gradient ซึ่งมีปุ่มเดียวบนหน้า เพราะคลาสทั้งชุดยาวมากและพังง่ายเมื่อแก้ดีไซน์
 ${Link_SearchEQ}       //a[contains(@class,'from-yellow-400') and contains(@class,'to-orange-500')]
 # เมนูบนหัวเว็บ เก็บไว้เป็นทางสำรองเมื่อไม่พบปุ่มบนหน้าหลัก
-${Link_SearchEQMenu}   //a[contains(text(),'ค้นหาเครื่องจักร')]
+${Link_SearchEQMenu}   //nav//a[contains(text(),'ค้นหาเครื่องจักร')]
  
 ${Text_SearchEQ}       //input[@placeholder='พิมพ์ชื่ออุปกรณ์...']
 # dropdown ประเภทอุปกรณ์คืออันแรกของหน้า อ้างตามลำดับแทนคลาส เพราะ dropdown บนหน้านี้ใช้คลาสชุดเดียวกันและยาวมาก
@@ -150,7 +153,8 @@ ${Return_farmerURL}     ${Base_URL}/farmer/delivery
 # รายการที่สถานะไม่ถูกต้อง (เช่น คืนไปแล้ว) จะไม่มีปุ่มนี้ จำนวนปุ่มจึงเป็นตัวชี้วัดของ RT01-01 และ RT01-03
 ${Btn_ReturnEQ}         //button[contains(text(),'ส่งคืนอุปกรณ์')]
 # ปุ่มยืนยันบน popup ที่เด้งหลังกดส่งคืน ระบบจะบันทึกการคืนเมื่อกดปุ่มนี้เท่านั้น
-${Btn_ConfirmReturn}    //button[contains(text(),'ยืนยัน')]
+# จับจากคลาสของกล่องยืนยันโดยตรง เพราะ contains(text(),'ยืนยัน') จะไปโดนปุ่ม "ยืนยันรับอุปกรณ์" บนการ์ดด้วย
+${Btn_ConfirmReturn}    //button[contains(@class,'swal2-confirm') and normalize-space()='ยืนยัน']
 # popup ผลลัพธ์ใช้ ${Popup_Title} ร่วมกับยูสเคสอื่น เพราะเป็น SweetAlert2 ตัวเดียวกัน
  
 #-------------------------------------------------------------------------
@@ -194,6 +198,16 @@ ${Btn_OGoHome}        //button[contains(text(),'ไปหน้าแรก')]
 ${AddEQ_ownerURL}        ${Base_URL}/owner/equipment
 ${Btn_AddEQ}             //button[contains(text(),'เพิ่มอุปกรณ์')]
  
+# ช่องประเภทอุปกรณ์ ต้องเลือกให้ตรงกับอุปกรณ์ก่อน ระบบจึงจะเปิดปุ่มบันทึกให้
+# คนละตัวกับ ${Select_EQType} ซึ่งเป็น dropdown บนหน้าค้นหาอุปกรณ์ฝั่ง Farmer จึงตั้งชื่อแยกกัน
+#
+# ช่องนี้ไม่มี attribute name ให้จับ และคลาสก็ใช้ชุดเดียวกับ dropdown สถานะบนฟอร์มเดียวกัน
+# จับด้วยคลาสจึงได้ 2 element (เคยลองแล้วไม่ทำงาน) เปลี่ยนมาจับจากตัวเลือกในลิสต์แทน
+# "ทั้งหมด" เป็นตัวเลือกแรก (value=0) ของ dropdown ประเภทเท่านั้น หมายถึงยังไม่ได้เลือกประเภท
+# ส่วน dropdown สถานะมีแค่ พร้อมให้เช่า / ไม่พร้อมให้เช่า / ถูกจอง จึงไม่มีทางชนกัน
+${Select_AddEQType}      //select[option[normalize-space()='ทั้งหมด']]
+# ตัวเลือกที่แปลว่า "ยังไม่ได้เลือกประเภท" ใช้ตอนทดสอบกรณีเว้นว่าง
+${EQTYPE_NONE}           ทั้งหมด
 ${Text_EQName}           //input[@name='equipmentName']
 ${Text_EQDetail}         //textarea[@name='equipmentDetails']
 ${Text_EQPrice}          //input[@name='price']
@@ -221,7 +235,8 @@ ${Tab_BookingPending}          //button[contains(.,'รอดำเนินก�
  
 # ปุ่มอัปเดตสถานะบนการ์ดรายการจอง ข้อความบนปุ่มบอกสถานะขั้นถัดไป ใช้นับรายการที่อัปเดตได้ด้วย
 ${Btn_UpdateBookingStatus}     //button[contains(.,'อัปเดตเป็น')]
-${Btn_CancelBooking}           //button[contains(text(),'ยกเลิกการจอง')]    # TODO ยืนยันกับหน้าจริง
+# ข้อความอยู่ใน div ลูกข้างในปุ่ม (มีไอคอนนำหน้า) จึงต้องใช้ . ไม่ใช่ text() และปุ่มนี้แสดงเฉพาะรายการสถานะ "รอการชำระเงิน"
+${Btn_CancelBooking}           //button[contains(.,'ยกเลิกการจอง')]
  
 # กล่องโต้ตอบ SweetAlert2 : ปุ่ม "ยืนยัน" ต้องเทียบตรงตัว ไม่งั้นจะจับปุ่ม "ยืนยันยกเลิก" ปนมาด้วย
 ${Btn_ConfirmUpdate}           //button[normalize-space(text())='ยืนยัน']
@@ -231,14 +246,15 @@ ${Btn_AcknowledgeDialog}       //button[normalize-space(text())='ตกลง']
 # เนื้อความบนกล่องโต้ตอบ ใช้ทั้งตอนยืนยันและตอนแสดงผลลัพธ์ จึงต้องอ่านหลังกดยืนยันแล้วเท่านั้น
 ${Popup_DialogText}            //div[@id='swal2-html-container']
  
-# บัญชีที่ใช้สร้างข้อมูลตั้งต้นของ TC04 - เติมค่าก่อนรัน
-# Farmer คนที่ 1 ใช้บัญชีทดสอบกลางที่หัวไฟล์ ส่วนคนที่ 2 ใช้สร้างการจองที่ช่วงเวลาชนกัน (เคส TC04_F02)
-${AB_FARMER1_USER}    ${TEST_FARMER_USER}
-${AB_FARMER1_PASS}    ${TEST_FARMER_PASS}
-${AB_FARMER2_USER}    ${EMPTY}
-${AB_FARMER2_PASS}    ${EMPTY}
+# บัญชีที่ใช้สร้างข้อมูลตั้งต้นของ TC04 (UseCase/Usecase_ApproveBooking_owner.robot)
+# Farmer คนที่ 1 = ผู้จองหลัก ใช้ somchaikaew เพราะเคยจองรถไถเดินตามสำเร็จจริงใน Usecase_Booking_farmer
+# Farmer คนที่ 2 = ใช้ลองจองช่วงเวลาชนกันในเคส TC04_F03 ใช้บัญชีทดสอบกลางที่หัวไฟล์
+${AB_FARMER1_USER}    somchaikaew
+${AB_FARMER1_PASS}    Somc1442!
+${AB_FARMER2_USER}    ${TEST_FARMER_USER}
+${AB_FARMER2_PASS}    ${TEST_FARMER_PASS}
 # ชื่ออุปกรณ์ที่ใช้จอง ต้องเป็นอุปกรณ์ของบัญชี Owner ที่ใช้ทดสอบ ไม่งั้นรายการจองจะไปโผล่ที่ Owner คนอื่น
-${AB_EQ_NAME}         ${EMPTY}
+${AB_EQ_NAME}         รถไถเดินตาม
  
 #-------------------------------------------------------------------------
 # System Flow Testing (F-MAIN) : ข้อมูลนำเข้าตามตารางในเอกสาร ข้อ 9.1 หน้า 125 - 142
@@ -259,4 +275,44 @@ ${Btn_ReceiptEQ}       //button[contains(text(),'ยืนยันรับอ�
 
 # F-MAIN-31 - F-MAIN-33 : หน้ารับคืนอุปกรณ์ของเจ้าของอุปกรณ์
 ${Return_ownerURL}       ${Base_URL}/owner/delivery
-${Btn_ConfirmReturned}   //button[contains(text(),'ยืนยันรับคืน')]
+# ข้อความจริงบนปุ่มคือ "ยืนยันรับคืนแล้ว" อยู่หลังไอคอน จึงใช้ . แทน text() (ใช้ร่วมกับ Update Delivery Owner)
+${Btn_ConfirmReturned}   //button[contains(.,'ยืนยันรับคืนแล้ว')]
+
+#-------------------------------------------------------------------------
+# Update Delivery and Pick Up Owner Usecase
+# ใช้ 2 หน้า : หน้ารายการจอง (${ApproveBooking_ownerURL}) เลื่อนสถานะการจัดส่ง
+# และหน้าการจัดส่ง (${Return_ownerURL}) ยืนยันรับคืนอุปกรณ์ที่เกษตรกรส่งคืนแล้ว
+# ---------- เมนูบัญชี (Test Design TC09 : คลิกไอคอนโปรไฟล์ แล้วเลือกเมนู) ----------
+${Menu_OwnerBookings}         //a[@href='/owner/bookings']
+${Menu_OwnerDelivery}         //a[@href='/owner/delivery']
+
+# ---------- หน้ารายการจอง : แท็บตามสถานะ (เทียบข้อความตรงตัว ไม่ให้ปนกับปุ่ม อัปเดตเป็น "...") ----------
+${Tab_BookingPaid}            //button[normalize-space()='อนุมัติการชำระเงิน']
+${Tab_BookingWaitDelivery}    //button[normalize-space()='รอการจัดส่ง']
+${Tab_BookingDelivered}       //button[normalize-space()='จัดส่งเรียบร้อย']
+# ปุ่มเลื่อนสถานะบนการ์ด รายการที่จัดส่งเรียบร้อยแล้วจะไม่มีปุ่มนี้
+${Btn_ToWaitDelivery}         //button[contains(.,'อัปเดตเป็น') and contains(.,'รอการจัดส่ง')]
+${Btn_ToDelivered}            //button[contains(.,'อัปเดตเป็น') and contains(.,'จัดส่งเรียบร้อย')]
+
+# ---------- หน้าการจัดส่ง (รับคืนอุปกรณ์) ----------
+# แสดงเฉพาะรายการที่เกษตรกรกดส่งคืนแล้ว การ์ดแต่ละใบมี "(รหัส: <deliveryId>)" เป็นรหัสจริงของรายการ
+${Card_OwnerReturn}           //div[contains(@class,'border-emerald-200')][.//h3[contains(.,'การส่งคืน #')]]
+${Text_NoReturnItem}          //*[normalize-space()='ยังไม่มีอุปกรณ์ที่ส่งคืน']
+
+#-------------------------------------------------------------------------
+# ตัวช่วยเทียบข้อความแจ้งเตือน (คีย์เวิร์ดกลางอยู่ใน keywords.robot หัวข้อ "การเปรียบเทียบข้อความ")
+# ใช้ร่วมกันได้ทุกสวีทที่มีคอลัมน์ ExpectedResult เดิมมาจาก Register_farmer.robot ย้ายมาไว้กลางจุดนี้
+# % ของคำหลักในเอกสารที่ต้องพบในข้อความของระบบ จึงถือว่าตรงกัน (ใช้ตอนคำไม่ตรงเป๊ะและไม่อยู่ในรายการอนุโลม)
+${WORD_MATCH_THRESHOLD}    ${60}
+
+# คำทั่วไปที่ไม่สื่อความหมายของกฎ ตัดทิ้งก่อนเทียบ
+@{STOPWORDS}
+...    กรุณา    กรอก    โปรด    ระบุ    ต้อง    เป็น    และ    หรือ    ที่    มี    ไม่    ให้    การ    ของ
+...    เท่านั้น    อัปโหลด    ตั้งแต่    ความ    อย่าง    ได้    ใน    กับ    ตัว    นั้น    นี้    จะ
+...    ค่า    ระหว่าง    ถึง    เลือก    ประกอบ    ไป    ด้วย    รองรับ    เฉพาะ    ประเภท    /
+
+# ชื่อฟิลด์ที่พบบนฟอร์มต่าง ๆ ของระบบ กันจับคู่ผิดฟิลด์ เช่น "อีเมล 5-60 ตัวอักษร" กับ "รหัสผ่าน 5-60 ตัวอักษร"
+@{FIELD_NAMES}
+...    ชื่อผู้ใช้    รหัสผ่าน    ยืนยันรหัสผ่าน    ชื่อจริง    นามสกุล    อีเมล    เพศ    วันเกิด    อายุ
+...    เบอร์โทรศัพท์    เลขที่บ้าน    ซอย    หมู่    ตำบล    แขวง    อำเภอ    เขต    จังหวัด
+...    รหัสไปรษณีย์    รูปภาพ    ไฟล์

@@ -1,10 +1,6 @@
 *** Settings ***
-Documentation     TC01 - Login Farmer (Usecase) | ทดสอบขั้นตอนการเข้าสู่ระบบจริงแบบครบยูสเคส (TC01_F01-F06)
-...               แยกมาจาก Login_farmer.robot (ซึ่งเหลือเฉพาะทดสอบข้อความแจ้งเตือนรายฟิลด์ TC01_01-27)
-...               ใช้ข้อมูลคงที่ (fix ค่าตายตัวในสคริปต์) ไม่อ่าน/เขียน Excel เพราะแต่ละสเต็ปมีลำดับและ state ต่อเนื่องกัน
-...               (เช่น TC01_F06 ต้องกรอกรหัสผิดติดกัน 3 ครั้งจนบัญชีถูกล็อกในเซสชันเดียว)
-...               อ้างอิงจากตาราง TC01-LF01 (LF01-01 ถึง LF01-09) และ TESTDESIGN TC01
-Metadata          System      ระบบเว็บศูนย์กลางให้บริการเช่าอุปกรณ์ทางการเกษตร (SRS v7.0)
+Documentation     TC01 - Login Farmer (Usecase) | ทดสอบยูสเคสเข้าสู่ระบบครบ TC01_F01-F06 ตาม TC01-LF01 (LF01-01 ถึง LF01-09) และ TESTDESIGN TC01
+...               ใช้ข้อมูลคงที่ ไม่อ่าน/เขียน Excel เพราะแต่ละสเต็ปมีลำดับ state ต่อเนื่องกัน (F06 กรอกรหัสผิด 3 ครั้งจนบัญชีถูกล็อกในเซสชันเดียว)
 Metadata          Use Case    TC01 Login Farmer (ยูสเคสเข้าสู่ระบบจริง)
 
 Resource          ../Resources/keywords.robot
@@ -12,19 +8,23 @@ Library           OperatingSystem
 Library           String
 Library           Collections
 
-Suite Setup       เปิดชุดทดสอบ
+Suite Setup       เตรียมชุดทดสอบยูสเคส
 Suite Teardown    ปิดชุดทดสอบ
 Test Teardown     เก็บผลท้ายกรณีทดสอบ
 
-
 *** Variables ***
 # ---------- ไฟล์และโฟลเดอร์ ----------
-${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot
 ${USECASE}            TC01_Usecase_Login_Farmer
+${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot/${USECASE}
 
-# ---------- ตัวชี้วัดที่ใช้ตัดสินผล ----------
-${SUCCESS_KEYWORD}    สำเร็จ
-${Popup_Success}      text=${SUCCESS_KEYWORD}
+# ---------- ข้อความที่คาดหวังตามเอกสารเทสเคส (เทียบตรงกัน 100%) ----------
+${EXP_LOGIN_SUCCESS}      เข้าสู่ระบบสำเร็จ           # LF02-03 / LF06-03
+${EXP_WRONG_PASSWORD}     รหัสผ่านไม่ถูกต้อง          # LF01-03 / LF01-05 / LF03-03
+${EXP_USER_NOT_FOUND}     ไม่พบข้อมูลผู้ใช้           # LF04-03
+${EXP_EMPTY_LOGIN}        กรุณากรอกชื่อผู้ใช้ | กรุณากรอกรหัสผ่าน    # LF05-03 (ข้อความแดงใต้ช่อง เรียงตามลำดับช่อง คั่นด้วย " | ")
+${EXP_ACCOUNT_LOCKED}     บัญชีถูกระงับการใช้งาน       # LF01-09
+
+# ---------- ตัวชี้วัดสถานะหน้า ----------
 ${LOGIN_URL_PART}     login-farmer      # ส่วนของ URL ที่บอกว่ายังอยู่หน้าเข้าสู่ระบบ
 ${POPUP_TIMEOUT}      5s                # รอสั้น ๆ เพราะกรณีที่ต้องไม่สำเร็จจะไม่มี popup
 
@@ -39,236 +39,128 @@ ${LOGIN_PASSWORD}     Somc1442!
 ${TC_ID}              UNKNOWN
 ${ACTUAL_MESSAGE}     ${EMPTY}
 
-
 *** Test Cases ***
 TC01_F01 - เข้าสู่ระบบด้วยบัญชีที่ถูกต้อง
-    [Documentation]    Basic Flow (TC01) : บัญชีถูกต้อง ต้องเข้าสู่ระบบสำเร็จ
+    #TC01-LF02 : บัญชีถูกต้อง ต้องแสดง "เข้าสู่ระบบสำเร็จ" และออกจากหน้าเข้าสู่ระบบ
     Set Test Variable    ${TC_ID}    TC01_F01
     กรณี TC01_F01    ${LOGIN_USERNAME}    ${LOGIN_PASSWORD}
 
 TC01_F02 - เข้าสู่ระบบด้วยรหัสผ่านที่ไม่ถูกต้อง
-    [Documentation]    Alternate Flow 5.2.1 : รหัสผ่านไม่ถูกต้อง ต้องถูกปฏิเสธ
+    #TC01-LF03 : รหัสผ่านไม่ถูกต้อง ต้องแสดง "รหัสผ่านไม่ถูกต้อง" และยังอยู่ที่หน้าเข้าสู่ระบบ
     Set Test Variable    ${TC_ID}    TC01_F02
-    กรณี TC01_F02    ${LOGIN_USERNAME}    wrong123    รหัสผ่านไม่ถูกต้อง
+    เข้าสู่ระบบแล้วต้องถูกปฏิเสธ    ${LOGIN_USERNAME}    wrong123    ${EXP_WRONG_PASSWORD}
 
 TC01_F03 - เข้าสู่ระบบด้วยชื่อผู้ใช้ที่ไม่มีในระบบ
-    [Documentation]    Alternate Flow 5.2.1 : ไม่พบชื่อผู้ใช้นี้ในระบบ ต้องถูกปฏิเสธ
+    #TC01-LF04 : ไม่มีชื่อผู้ใช้นี้ ต้องแสดง "ไม่พบข้อมูลผู้ใช้" และยังอยู่ที่หน้าเข้าสู่ระบบ
     Set Test Variable    ${TC_ID}    TC01_F03
-    กรณี TC01_F03    notexistuser99    PK01010101    ไม่พบข้อมูลผู้ใช้
+    เข้าสู่ระบบแล้วต้องถูกปฏิเสธ    notexistuser99    PK01010101    ${EXP_USER_NOT_FOUND}
 
 TC01_F04 - ไม่กรอกข้อมูลแล้วกดเข้าสู่ระบบ
-    [Documentation]    Alternate Flow 3.1 : ไม่กรอกข้อมูล ระบบต้องกันไว้ (แจ้งเตือน หรือปิดปุ่ม)
+    #TC01-LF05 : ไม่กรอกข้อมูล ต้องแสดง "กรุณากรอกชื่อผู้ใช้" และ "กรุณากรอกรหัสผ่าน" และยังอยู่ที่หน้าเข้าสู่ระบบ
     Set Test Variable    ${TC_ID}    TC01_F04
-    กรณี TC01_F04    ${EMPTY}    ${EMPTY}
+    เข้าสู่ระบบแล้วต้องถูกปฏิเสธ    ${EMPTY}    ${EMPTY}    ${EXP_EMPTY_LOGIN}
 
-TC01_F05 - ออกจากระบบแล้วต้องกลับมาหน้าเข้าสู่ระบบ
-    [Documentation]    ออกจากระบบได้ และกลับมาที่หน้าเข้าสู่ระบบ
+TC01_F05 - ออกจากระบบแล้วต้องกลับมาหน้าหลัก
+    #TC01-LF06 : เข้าสู่ระบบ -> เปิดเมนูโปรไฟล์ -> ออกจากระบบ แล้วต้องกลับมาหน้าหลัก
     Set Test Variable    ${TC_ID}    TC01_F05
     กรณี TC01_F05    ${LOGIN_USERNAME}    ${LOGIN_PASSWORD}
 
 TC01_F06 - กรอกรหัสผ่านผิด 3 ครั้งติดกัน บัญชีต้องถูกระงับ
-    [Documentation]    TC01-LF01 (LF01-01 ถึง LF01-09) : รหัสผ่านผิด 3 ครั้งติดกันแล้วบัญชีถูกล็อก
-    ...                ใช้บัญชีคงที่ ${LOGIN_USERNAME} เดียวกับ F01/F05 : เคสนี้จะทำให้บัญชีถูกล็อกถาวร
-    ...                รันครั้งต่อไป F01/F05/F02 จะเข้าสู่ระบบด้วยบัญชีนี้ไม่ได้อีก ต้องสร้าง/ปลดล็อกบัญชีใหม่ก่อนรันซ้ำ
+    #TC01-LF01 (LF01-01 ถึง LF01-09) : รหัสผ่านผิด 3 ครั้งติดกัน แล้วกรอกรหัสถูกต้องต้องแสดง "บัญชีถูกระงับการใช้งาน"
     Set Test Variable    ${TC_ID}    TC01_F06
     กรณี TC01_F06    ${LOGIN_USERNAME}    ${LOGIN_PASSWORD}
 
-
 *** Keywords ***
-# ---------- 1. เตรียมและปิดชุดทดสอบ ----------
-
-เปิดชุดทดสอบ
-    [Documentation]    ล้างภาพของรอบก่อน และเปิดเบราว์เซอร์ (ไม่ต้องเปิด Excel เพราะไฟล์นี้ fix ค่าตายตัว ไม่มีการเขียนผลกลับ)
-    Create Directory    ${SCREENSHOT_DIR}
-    ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
-    Open Test Browser
-
-ลบภาพของรอบก่อน
-    [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่ลบตัวโฟลเดอร์เพราะ OneDrive มักคืน Access denied
-    [Arguments]    ${Folder}
-    ${Files}=    List Files In Directory    ${Folder}    ${USECASE}_*.png
-    FOR    ${File}    IN    @{Files}
-        ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
-        IF    not ${Removed}    Log    ลบ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
-    END
-
-ปิดชุดทดสอบ
-    [Documentation]    ปิดเบราว์เซอร์ทั้งหมด
-    Close All Test Browsers
-
-เก็บผลท้ายกรณีทดสอบ
-    [Documentation]    เก็บภาพเมื่อไม่ผ่าน แล้วปิด context (ไม่มีการเขียนผลกลับ Excel เพราะไฟล์นี้ fix ค่าตายตัว)
-    IF    '${TEST STATUS}' == 'FAIL'
-        Run Keyword And Ignore Error
-        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
-    END
-    # Ignore Error เพราะบางกรณีอาจยังไม่มี context ถูกเปิด
-    Run Keyword And Ignore Error    Close Test Context
-
-
-# ---------- 2. กรณีทดสอบยูสเคสเข้าสู่ระบบจริง (TC01_F01 - TC01_F06) ----------
+# ---------- 1. กรณีทดสอบยูสเคสเข้าสู่ระบบ ----------
 
 กรณี TC01_F01
-    [Documentation]    บัญชีถูกต้อง ต้องมีข้อความแจ้งสำเร็จ และต้องออกจากหน้าเข้าสู่ระบบจริง
-    ...                ใช้บัญชีคงที่ ${LOGIN_USERNAME} ที่สร้างไว้ล่วงหน้าในระบบแล้ว
+    #LF02-03 : ข้อความต้องเป็น "เข้าสู่ระบบสำเร็จ" และต้องออกจากหน้าเข้าสู่ระบบ
     [Arguments]    ${Username}    ${Password}
-
     ${Message}=    เข้าสู่ระบบ    ${Username}    ${Password}
-    ${Left}=       รอสถานะหน้าเข้าสู่ระบบ    ${False}
-    ${Url}=        Get Url
-
-    บันทึกผลที่ได้จริง    ${Message} (หน้าปัจจุบัน ${Url})
-    เก็บภาพหลักฐาน       เข้าสู่ระบบสำเร็จ
-
-    Should Contain    ${Message}    ${SUCCESS_KEYWORD}
-    ...    msg=เข้าสู่ระบบไม่สำเร็จ ระบบตอบกลับว่า "${Message}"
-    Should Be True    ${Left}
-    ...    msg=ระบบแจ้งว่าสำเร็จ แต่ยังคงอยู่ที่หน้าเข้าสู่ระบบ (${Url})
-
-กรณี TC01_F02
-    [Documentation]    รหัสผ่านไม่ถูกต้อง ต้องถูกปฏิเสธ (ใส่ผิดครั้งเดียว ไม่ถึงเกณฑ์ล็อกบัญชีของ F06)
-    [Arguments]    ${Username}    ${Password}    ${ExpectedResult}
-    เข้าสู่ระบบแล้วต้องถูกปฏิเสธ    ${Username}    ${Password}    ${ExpectedResult}    รหัสผ่านไม่ถูกต้อง
-
-กรณี TC01_F03
-    [Documentation]    ชื่อผู้ใช้ที่ไม่มีในระบบ ต้องถูกปฏิเสธและไม่พาออกจากหน้าเข้าสู่ระบบ
-    [Arguments]    ${Username}    ${Password}    ${ExpectedResult}
-    เข้าสู่ระบบแล้วต้องถูกปฏิเสธ    ${Username}    ${Password}    ${ExpectedResult}    ไม่มีชื่อผู้ใช้นี้
+    บันทึกผลที่ได้จริง    ${Message}
+    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${EXP_LOGIN_SUCCESS}
+    ${Left}=    รอสถานะหน้าเข้าสู่ระบบ    ${False}
+    Should Be True    ${Left}    msg=ระบบแจ้งว่าสำเร็จ แต่ยังคงอยู่ที่หน้าเข้าสู่ระบบ
 
 เข้าสู่ระบบแล้วต้องถูกปฏิเสธ
-    [Documentation]    ขั้นตอนร่วมของ TC01_F02 และ TC01_F03 : เข้าสู่ระบบแล้วต้องไม่ผ่าน และข้อความต้องตรงเอกสาร
-    [Arguments]    ${Username}    ${Password}    ${ExpectedResult}    ${ชื่อภาพ}
-
+    #ขั้นตอนร่วมของ F02 F03 F04 : ข้อความต้องตรงเอกสาร 100% และต้องยังอยู่ที่หน้าเข้าสู่ระบบ
+    [Arguments]    ${Username}    ${Password}    ${ExpectedResult}
     ${Message}=    เข้าสู่ระบบ    ${Username}    ${Password}
-
     บันทึกผลที่ได้จริง    ${Message}
-    เก็บภาพหลักฐาน       ${ชื่อภาพ}
-
-    ต้องเข้าสู่ระบบไม่สำเร็จ       ${Message}
-    ข้อความต้องตรงกับที่คาดหวัง    ${Message}    ${ExpectedResult}
-
-กรณี TC01_F04
-    [Documentation]    ไม่กรอกข้อมูลแล้วกดปุ่ม ระบบต้องกันไว้ (แจ้งเตือน หรือปิดปุ่ม ถือว่าป้องกันได้ทั้งสองทาง)
-    [Arguments]    ${Username}    ${Password}
-
-    Open Login Page
-    Input Username    ${Username}
-    Input Password    ${Password}
-    Keyboard Key      press    Tab
-
-    ${Clicked}=     Click Button If Enabled    ${Btn_Login}
-    ${Messages}=    Get Validation Messages
-    ${Count}=       Get Length    ${Messages}
-    ${Summary}=     รวมข้อความ    ${Messages}    ปุ่มเข้าสู่ระบบถูกปิดใช้งาน ระบบไม่ให้เข้าสู่ระบบ
-    ${Left}=        รอสถานะหน้าเข้าสู่ระบบ    ${False}
-
-    บันทึกผลที่ได้จริง    ${Summary}
-    เก็บภาพหลักฐาน       ไม่กรอกข้อมูล
-
-    Should Not Be True    ${Left}    msg=ระบบยอมให้เข้าสู่ระบบทั้งที่ไม่ได้กรอกข้อมูล
-    ${Prevented}=    Evaluate    (not ${Clicked}) or ${Count} > 0
-    Should Be True    ${Prevented}    msg=ระบบไม่ได้แจ้งเตือนและไม่ได้ปิดปุ่มไว้เมื่อไม่กรอกข้อมูล
+    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${ExpectedResult}
+    ต้องยังอยู่ที่หน้าเข้าสู่ระบบ
 
 กรณี TC01_F05
-    [Documentation]    ออกจากระบบแล้วต้องกลับมาหน้าหลัก
-    ...                ปุ่มออกจากระบบซ่อนอยู่ในเมนูโปรไฟล์ ต้องกดปุ่มโปรไฟล์เปิดเมนูก่อนจึงจะเห็น
-    ...                ใช้บัญชีคงที่ ${LOGIN_USERNAME} ที่สร้างไว้ล่วงหน้าในระบบแล้ว
+    #LF06-03 ถึง LF06-05 : เข้าสู่ระบบสำเร็จ -> เมนูโปรไฟล์มีปุ่มออกจากระบบ -> ออกจากระบบแล้วกลับหน้าหลัก
     [Arguments]    ${Username}    ${Password}
-
     ${Message}=    เข้าสู่ระบบ    ${Username}    ${Password}
-    ${Left}=       รอสถานะหน้าเข้าสู่ระบบ    ${False}
-    Should Be True    ${Left}
-    ...    msg=เข้าสู่ระบบไม่สำเร็จ จึงยังทดสอบการออกจากระบบไม่ได้ (${Message})
+    บันทึกผลที่ได้จริง    ${Message}
+    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${EXP_LOGIN_SUCCESS}
+    ${Left}=    รอสถานะหน้าเข้าสู่ระบบ    ${False}
+    Should Be True    ${Left}    msg=เข้าสู่ระบบแล้วยังอยู่ที่หน้าเข้าสู่ระบบ จึงทดสอบการออกจากระบบไม่ได้
 
-    ${Found}=    Is Element Visible    ${Btn_UserProfile}
-    Should Be True    ${Found}    msg=ไม่พบปุ่มโปรไฟล์บนหัวเว็บ จึงเปิดเมนูออกจากระบบไม่ได้
+    # LF06-04 : เปิดเมนูโปรไฟล์ ต้องมีปุ่มออกจากระบบ
     Click    ${Btn_UserProfile}
-    Click    ${Btn_Logout}
+    ${HasLogout}=    Is Element Visible    ${Btn_Logout}
+    Should Be True    ${HasLogout}    msg=เปิดเมนูโปรไฟล์แล้วไม่พบปุ่มออกจากระบบ
 
+    # LF06-05 : ออกจากระบบแล้วต้องกลับหน้าหลัก
+    Click    ${Btn_Logout}
     ${BackToHome}=    รอกลับหน้าหลัก    ${20}
     ${Url}=           Get Url
-
-    บันทึกผลที่ได้จริง    ออกจากระบบแล้วไปที่หน้า ${Url}
-    เก็บภาพหลักฐาน       ออกจากระบบ
-
-    Should Be True    ${BackToHome}
-    ...    msg=กดออกจากระบบแล้วไม่ได้กลับมาหน้าหลัก (อยู่ที่ ${Url})
+    บันทึกผลที่ได้จริง    ${Url}
+    Should Be True    ${BackToHome}    msg=กดออกจากระบบแล้วไม่ได้กลับมาหน้าหลัก (อยู่ที่ ${Url})
 
 กรณี TC01_F06
-    [Documentation]    รหัสผ่านผิด 3 ครั้งติดกันแล้วระบบต้องระงับบัญชี (LF01-01 ถึง LF01-09)
-    ...                ใช้บัญชีสมัครใหม่ เพราะบัญชีที่ถูกล็อกแล้วใช้ซ้ำในรอบถัดไปไม่ได้
+    #LF01-02 ถึง LF01-09 : ผิด 3 ครั้งต้องได้ "รหัสผ่านไม่ถูกต้อง" ทุกครั้ง แล้วรหัสถูกต้องต้องได้ "บัญชีถูกระงับการใช้งาน"
+    #ตรวจครบทุกครั้งก่อนสรุป (Continue On Failure) เพื่อให้เห็นผลของทุกสเต็ปใน log
     [Arguments]    ${Username}    ${Password}
-
     ${Records}=    Create List
-
-    # LF01-02 ถึง LF01-07 : กรอกรหัสผ่านผิด 3 ครั้ง
     FOR    ${Index}    ${Wrong}    IN ENUMERATE    @{WRONG_PASSWORDS}    start=1
         ${Message}=    เข้าสู่ระบบ    ${Username}    ${Wrong}
-        Append To List    ${Records}    ครั้งที่ ${Index} (${Wrong}) : ${Message}
-        เก็บภาพหลักฐาน    ผิดครั้งที่ ${Index}
-        ต้องเข้าสู่ระบบไม่สำเร็จ    ${Message}
+        Append To List    ${Records}    ครั้งที่ ${Index} (${Wrong}) : "${Message}"
+        Run Keyword And Continue On Failure    เทียบผลจริงกับที่คาดหวัง    ${Message}    ${EXP_WRONG_PASSWORD}
     END
 
-    # LF01-08 ถึง LF01-09 : รหัสผ่านถูกต้อง แต่บัญชีถูกระงับไปแล้ว
     ${Final}=    เข้าสู่ระบบ    ${Username}    ${Password}
-    Append To List    ${Records}    รหัสผ่านถูกต้องหลังถูกล็อก : ${Final}
-    เก็บภาพหลักฐาน    บัญชีถูกระงับ
-
+    Append To List    ${Records}    รหัสผ่านถูกต้องหลังผิด 3 ครั้ง : "${Final}"
     ${Summary}=    Evaluate    " | ".join($Records)
     บันทึกผลที่ได้จริง    ${Summary}
+    เทียบผลจริงกับที่คาดหวัง    ${Final}    ${EXP_ACCOUNT_LOCKED}
 
-    ต้องเข้าสู่ระบบไม่สำเร็จ    ${Final}
-    ข้อความต้องกล่าวถึง        ${Final}    ระงับ    ล็อก    ล็อค    lock    suspend
-
-
-# ---------- 3. ขั้นตอนย่อยของการเข้าสู่ระบบ ----------
+# ---------- 2. ขั้นตอนย่อยของการเข้าสู่ระบบ ----------
 
 เข้าสู่ระบบ
-    [Documentation]    เปิด context ใหม่ กรอกข้อมูล กดปุ่ม แล้วคืนข้อความที่ระบบตอบกลับ
+    #เปิด context ใหม่ กรอกข้อมูล กดปุ่ม แล้วคืนข้อความที่ระบบแสดง (ไม่มีข้อความคืนค่าว่าง)
     [Arguments]    ${Username}    ${Password}
-
     Run Keyword And Ignore Error    Close Test Context
     Open Login Page
     Input Username    ${Username}
     Input Password    ${Password}
     Keyboard Key      press    Tab
-
     ${Clicked}=    Click Button If Enabled    ${Btn_Login}
-    IF    not ${Clicked}
-        ${Messages}=    Get Validation Messages
-        ${Blocked}=     รวมข้อความ    ${Messages}    ปุ่มเข้าสู่ระบบถูกปิดใช้งาน
-        RETURN    ${Blocked}
-    END
-
-    ${Message}=    รอผลลัพธ์หลังกดเข้าสู่ระบบ
-    Log    ข้อความที่ระบบตอบกลับ : ${Message}    level=INFO
+    ${Message}=    อ่านข้อความหลังกดเข้าสู่ระบบ    ${Clicked}
     RETURN    ${Message}
 
-รอผลลัพธ์หลังกดเข้าสู่ระบบ
-    [Documentation]    รอ popup แจ้งสำเร็จก่อน ไม่มีจึงดูว่าเปลี่ยนหน้าไปแล้วหรือมีข้อความแจ้งเตือน
-    ${Success}=    Run Keyword And Return Status
-    ...    Wait For Elements State    ${Popup_Success}    visible    ${POPUP_TIMEOUT}
-
-    IF    ${Success}
-        ${Text}=    Get Text    ${Popup_Success}
-        Close Login Popup
-        RETURN    ${Text}
+อ่านข้อความหลังกดเข้าสู่ระบบ
+    #อ่านตามลำดับ : หัวข้อ popup (${Popup_Title}) -> ข้อความแจ้งเตือนสีแดงใต้ช่อง ไม่พบเลยคืนค่าว่าง
+    #ไม่อ่านข้อความภาษาอังกฤษของเบราว์เซอร์ (เช่น Please fill out this field.) เพราะเอกสาร dev ไม่ได้ระบุไว้
+    [Arguments]    ${Clicked}
+    IF    ${Clicked}
+        ${HasPopup}=    Run Keyword And Return Status
+        ...    Wait For Elements State    ${Popup_Title}    visible    ${POPUP_TIMEOUT}
+        IF    ${HasPopup}
+            ${Text}=    Get Popup Title
+            Close Login Popup
+            RETURN    ${Text}
+        END
     END
-
-    # บางหน้าไม่มี popup แต่เด้งไปหน้าถัดไปเลย ถือว่าสำเร็จเช่นกัน
-    ${Left}=    รอสถานะหน้าเข้าสู่ระบบ    ${False}
-    IF    ${Left}
-        ${Url}=    Get Url
-        RETURN    เข้าสู่ระบบสำเร็จ (เปลี่ยนไปหน้า ${Url})
-    END
-
     ${Messages}=    Get Validation Messages
-    ${Result}=      รวมข้อความ    ${Messages}    ระบบไม่ตอบสนองใด ๆ (ไม่มี popup และไม่มีข้อความแจ้งเตือน)
-    RETURN    ${Result}
+    ${Text}=    Evaluate    " | ".join($Messages)
+    RETURN    ${Text}
 
 รอสถานะหน้าเข้าสู่ระบบ
-    [Documentation]    รอจน URL ถึงสถานะที่ต้องการ (${True} = กลับมาหน้าเข้าสู่ระบบ / ${False} = ออกจากหน้าแล้ว)
-    ...                รอเป็นรอบสั้น ๆ เพื่อไม่ให้กรณีที่ต้องไม่สำเร็จเสียเวลารอนาน
+    #รอจน URL ถึงสถานะที่ต้องการ (${True}=อยู่หน้าเข้าสู่ระบบ, ${False}=ออกแล้ว)
     [Arguments]    ${OnLoginPage}    ${Rounds}=${10}
     FOR    ${Round}    IN RANGE    ${Rounds}
         ${Url}=    Get Url
@@ -279,7 +171,7 @@ TC01_F06 - กรอกรหัสผ่านผิด 3 ครั้งติ
     RETURN    ${False}
 
 รอกลับหน้าหลัก
-    [Documentation]    รอจน URL เป็นหน้าหลัก (${Base_URL}/ เฉย ๆ ไม่มี path ต่อท้าย) ภายในเวลาที่กำหนด
+    #รอจน URL เป็นหน้าหลัก (${Base_URL}/ ไม่มี path ต่อท้าย)
     [Arguments]    ${Rounds}=${10}
     FOR    ${Round}    IN RANGE    ${Rounds}
         ${Url}=    Get Url
@@ -289,49 +181,8 @@ TC01_F06 - กรอกรหัสผ่านผิด 3 ครั้งติ
     END
     RETURN    ${False}
 
-
-# ---------- 4. คีย์เวิร์ดช่วยเหลือ : บันทึกผล ตรวจผล เก็บหลักฐาน ----------
-
-บันทึกผลที่ได้จริง
-    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ให้ teardown ใช้เขียน log เมื่อกรณีทดสอบไม่ผ่าน
-    [Arguments]    ${Text}
-    Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
-
-รวมข้อความ
-    [Documentation]    รวมข้อความในลิสต์เป็นข้อความเดียว ลิสต์ว่างให้ใช้ข้อความสำรอง
-    [Arguments]    ${Messages}    ${Fallback}
-    ${Count}=    Get Length    ${Messages}
-    IF    ${Count} == 0    RETURN    ${Fallback}
-    ${Joined}=    Evaluate    " | ".join($Messages)
-    RETURN    ${Joined}
-
-ต้องเข้าสู่ระบบไม่สำเร็จ
-    [Documentation]    ยืนยันว่าไม่มีข้อความแจ้งสำเร็จ และยังอยู่ที่หน้าเข้าสู่ระบบ
-    [Arguments]    ${Message}
+ต้องยังอยู่ที่หน้าเข้าสู่ระบบ
+    #ยืนยันว่า URL ยังเป็นหน้าเข้าสู่ระบบ
     ${Url}=    Get Url
-    Should Not Contain    ${Message}    ${SUCCESS_KEYWORD}
-    ...    msg=ระบบให้เข้าสู่ระบบสำเร็จ ทั้งที่ควรปฏิเสธ (ข้อความ "${Message}")
-    Should Contain    ${Url}    ${LOGIN_URL_PART}
-    ...    msg=ระบบพาออกจากหน้าเข้าสู่ระบบ ทั้งที่ควรปฏิเสธ (ไปที่ ${Url})
-
-ข้อความต้องตรงกับที่คาดหวัง
-    [Documentation]    ยืนยันว่าข้อความตรงกับ ExpectedResult ที่กำหนดไว้ในสคริปต์
-    [Arguments]    ${Message}    ${ExpectedResult}
-    ${Matched}=    ข้อความตรงกับที่คาดหวัง    ${Message}    ${ExpectedResult}
-    Should Be True    ${Matched}
-    ...    msg=ระบบตอบว่า "${Message}" แต่ที่กำหนดไว้คือ "${ExpectedResult}"
-
-ข้อความต้องกล่าวถึง
-    [Documentation]    ยืนยันว่ามีคำที่กำหนดอย่างน้อยหนึ่งคำ ใช้กับกรณีที่ข้อความระบบเป็นประโยคยาว
-    [Arguments]    ${Message}    @{Keywords}
-    ${Lower}=    Convert To Lower Case    ${Message}
-    # lambda รับค่าผ่าน default argument เพราะ RF มองไม่เห็น $ตัวแปร ใน comprehension
-    ${Matched}=    Evaluate    any(map(lambda k, t=$Lower: k.lower() in t, $Keywords))
-    Should Be True    ${Matched}
-    ...    msg=ข้อความ "${Message}" ไม่มีคำว่า ${Keywords} จึงไม่ตรงกับที่กำหนดไว้
-
-เก็บภาพหลักฐาน
-    [Documentation]    บันทึกภาพหน้าจอเป็นหลักฐาน ตั้งชื่อ <ยูสเคส>_<รหัส>_<คำอธิบาย>
-    [Arguments]    ${Name}
-    Run Keyword And Ignore Error
-    ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_${Name}    fullPage=True
+    ${OnLogin}=    Evaluate    '${LOGIN_URL_PART}' in $Url
+    Should Be True    ${OnLogin}    msg=ระบบพาออกจากหน้าเข้าสู่ระบบ ทั้งที่ควรปฏิเสธ (ไปที่ ${Url})

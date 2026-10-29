@@ -1,47 +1,46 @@
 *** Settings ***
-Documentation     TC04 - Booking Equipment Farmer | ตรวจข้อความแจ้งเตือนรายฟิลด์ (TC04_01-17)
-...               การทดสอบยูสเคสจองอุปกรณ์จริงระดับ Flow (TC04_F01-F05) แยกไปอยู่ที่ Usecase/Usecase_Booking_farmer.robot
-...               ยกเว้น TC04_04 (IVEc2.0 จองซ้ำช่วงเวลาเดิม) ที่ยังต้องพึ่งขั้นตอน "จองให้สำเร็จ 1 ครั้งก่อน"
-...               จึงคงคีย์เวิร์ด "กรณี TC04_F05" ไว้ในไฟล์นี้ด้วย (มีอยู่ทั้งที่นี่และที่ไฟล์ Usecase แยกกันคนละชุด)
-
-Metadata          System      ระบบเว็บศูนย์กลางให้บริการเช่าอุปกรณ์ทางการเกษตร (SRS v7.0)
-Metadata          Use Case    TC04 Booking Equipment Farmer (ทดสอบฟิลด์)
+Documentation     TC04 - Booking Equipment Farmer | ตรวจข้อความแจ้งเตือนรายฟิลด์ (TC04_01-16)
+...               อ่านข้อมูลทุกแถวของชีต BookingEQ_Farmer ด้วย FOR loop แล้วเทียบ ActualResult กับ ExpectedResult แบบตรงกัน 100% (Should Be Equal)
+...               Flow การจองจริง (TC04_F01-F05) อยู่ที่ UseCase/Usecase_Booking_farmer.robot
+...               ยกเว้น TC04_04 (จองซ้ำช่วงเวลาเดิม) ที่ต้องจองให้สำเร็จ 1 ครั้งก่อน จึงคงคีย์เวิร์ด "กรณี TC04_F05" ไว้ในไฟล์นี้
 Metadata          Test Data   TestData/Data.xlsx (sheet: BookingEQ_Farmer)
 
 Resource          ../Resources/keywords.robot
-Library           DataDriver    file=${CURDIR}/../TestData/Data.xlsx    sheet_name=BookingEQ_Farmer
 Library           ExcelLibrary
-Library           OperatingSystem
-Library           String
 Library           Collections
 
-Suite Setup       เปิดชุดทดสอบ
-Suite Teardown    ปิดชุดทดสอบ
-Test Teardown     เก็บผลท้ายกรณีทดสอบ
-Test Template     ดำเนินการกรณีทดสอบ
-
+Suite Setup       เปิดชุดทดสอบจาก Excel    Booking
+Suite Teardown    ปิดชุดทดสอบ Excel
 
 *** Variables ***
 # ---------- ที่อยู่ของไฟล์และโฟลเดอร์ ----------
 ${DATA_FILE}          ${CURDIR}/../TestData/Data.xlsx
-${SHEET}               BookingEQ_Farmer
-${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot
+${SHEET}              BookingEQ_Farmer
 ${USECASE}            TC04_Booking_Farmer
+${SCREENSHOT_DIR}     ${CURDIR}/../Screenshot/${USECASE}
 
 # ---------- ตำแหน่งคอลัมน์ในชีต ----------
-# ตรงกับ data validation ที่ตั้งไว้ในไฟล์ Excel : A2:A18 คือ ${Run} และ I2:I18 คือ ${Result}
-${COL_ID}             ${2}    # คอลัมน์ B : ${TestCase}
-${COL_ACTUAL}         ${8}    # คอลัมน์ H : ${ActualResult}
-${COL_PF}             ${9}    # คอลัมน์ I : ${Result}
+${COL_ID}         ${2}     # คอลัมน์ B : ${TestCase}
+${COL_ACTUAL}     ${8}     # คอลัมน์ H : ${ActualResult}
+${COL_PF}         ${9}     # คอลัมน์ I : ${Result}
+${COL_COUNT}      ${7}     # อ่านคอลัมน์ A-G
 
-# ---------- ข้อความและตัวชี้วัดที่ใช้ตัดสินผล ----------
-# ใช้แทนกรณี "ข้อมูลผ่านการตรวจสอบ ไม่มีข้อความแจ้งเตือน" ตามที่เอกสาร Test Case ระบุ
-${PASS_MESSAGE}       ผ่านการตรวจสอบ
-# ข้อความบน popup เมื่อจองสำเร็จ ใช้ยืนยันผลของ TC04_04 (ผ่าน "กรณี TC04_F05" ในไฟล์นี้)
-${BOOK_SUCCESS}       การจองสำเร็จ
+# ---------- ข้อความที่ใช้ตรวจขั้นเตรียมข้อมูล ----------
+# หัวข้อบน popup เมื่อจองสำเร็จ (ตรงตามระบบจริงทุกตัวอักษร) ใช้ยืนยันการจองรอบแรกของ TC04_04 (ผ่าน "กรณี TC04_F05" ในไฟล์นี้)
+${BOOK_SUCCESS}       การจองสำเร็จ!
+# หัวข้อของ popup ข้อกำหนดการเช่า (เป็น <h1> ในกล่องเดียวกับปุ่ม "ยอมรับ" ไม่ใช่ SweetAlert2) ใช้อ่าน ActualResult ของแถวที่ข้อมูลถูกต้อง
+${Terms_Title}        xpath=//div[.//button[contains(text(),'ยอมรับ')]]//h1
 # บัญชีที่ใช้ทุกกรณี ต้องเข้าสู่ระบบก่อนจึงจะเปิดตะกร้าและจองได้ (Inter-Case Dependency กับ TC01)
+# wanidasukj4646 ใช้ไม่ได้ : login แล้ว backend error "Query did not return a unique result" (username ซ้ำหลายแถวใน DB
+# เพราะ Register_farmer.robot ถูกรันซ้ำหลายรอบ และ backend ไม่ปฏิเสธ username ซ้ำตอนสมัคร — เป็นบั๊กจริงตรงเคส RF01-04)
+# เกษตรกรล้าง DB แล้วรัน Register ใหม่เฉพาะ TC02_001 จึงได้บัญชีสะอาด ไม่ซ้ำ (somchaikaew เดิมที่เคยโดนล็อกถาวรจาก TC01_F06
+# ก็หายล็อกไปด้วยเพราะ DB ถูกล้างทั้งตาราง)
 ${BOOK_USERNAME}      somchaikaew
 ${BOOK_PASSWORD}      Somc1442!
+# บัญชีเกษตรกรคนที่ 2 ใช้เฉพาะ TC04_04 : จองช่วงเวลาเดียวกับที่ ${BOOK_USERNAME} จองไว้แล้ว
+# ต้องเป็นคนละคน เพราะสถานการณ์จริงคือผู้เช่ารายอื่นมาจองชนกัน (ใช้ต่อใน AB01-01 ของ Approve Booking)
+${BOOK_USERNAME_2}    ${TEST_FARMER_USER}
+${BOOK_PASSWORD_2}    ${TEST_FARMER_PASS}
 
 # ---------- อุปกรณ์ที่ใช้ทดสอบ ----------
 # ตาราง Test Data ของ BK01 ในเอกสารมีแค่ Start Date / End Date / Address ไม่มีคอลัมน์อุปกรณ์
@@ -55,192 +54,108 @@ ${BOOK_PASSWORD}      Somc1442!
 ${BOOK_EQ_TYPE}       AUTO
 ${BOOK_EQ_NAME}       รถไถเดินตาม
 
-# ---------- ตัวแปรระดับกรณีทดสอบ ใช้ส่งข้อมูลให้ teardown ----------
-${TC_ID}              UNKNOWN
-${ROW_NUM}            ${0}
-${ACTUAL_MESSAGE}     ${EMPTY}
-
-
 *** Test Cases ***
-Booking Equipment Farmer : ${TestCase}
+Booking Equipment Farmer : ทุกกรณีทดสอบในชีต BookingEQ_Farmer
+    #วนอ่านทุกแถวจาก Excel (Run = Yes) ทดสอบทีละแถว เขียนผลกลับ Excel แล้วสรุปแถวที่ไม่ผ่านตอนท้าย
+    ${Total}=    นับแถวใน Excel    ${SHEET}    ${COL_ID}
+    @{Failed}=   Create List
 
+    FOR    ${Row}    IN RANGE    2    ${Total} + 1
+        ${Cells}=    อ่านแถวข้อมูลจาก Excel    ${SHEET}    ${Row}    ${COL_COUNT}
+        ${Run}=         Set Variable    ${Cells}[0]
+        ${TestCase}=    Set Variable    ${Cells}[1]
+        # แถวสรุปท้ายชีตไม่มีรหัสกรณีทดสอบ และข้ามแถวที่ไม่ได้สั่งรัน
+        IF    '${TestCase}' == '${EMPTY}' or '${Run}' != 'Yes'    CONTINUE
+
+        ${Status}    ${Detail}=    Run Keyword And Ignore Error    ทดสอบหนึ่งแถว    ${Row}    ${Cells}
+        IF    '${Status}' == 'FAIL'    Append To List    ${Failed}    ${TestCase} : ${Detail}
+    END
+
+    ${FailCount}=    Get Length    ${Failed}
+    IF    ${FailCount} > 0
+        ${Summary}=    Catenate    SEPARATOR=\n    @{Failed}
+        Fail    ไม่ผ่าน ${FailCount} กรณี:\n${Summary}
+    END
 
 *** Keywords ***
 # =====================================================================
-# 1. การเตรียมและปิดงาน
+# 1. ทดสอบหนึ่งแถว
 # =====================================================================
 
-เปิดชุดทดสอบ
-    [Documentation]    ล้างภาพของรอบก่อน เปิดไฟล์ Excel สำหรับเขียนผล และเปิดเบราว์เซอร์
-    Create Directory    ${SCREENSHOT_DIR}
-    ลบภาพของรอบก่อน    ${SCREENSHOT_DIR}
-
-    Open Excel Document    ${DATA_FILE}    Booking
-    Open Test Browser
-
-ลบภาพของรอบก่อน
-    [Documentation]    ลบเฉพาะภาพของยูสเคสนี้ ไม่แตะภาพของยูสเคสอื่นที่อยู่โฟลเดอร์เดียวกัน
-    ...                และไม่ลบตัวโฟลเดอร์ เพราะ OneDrive มักคืน Access denied
-    [Arguments]    ${Folder}
-    ${Files}=    List Files In Directory    ${Folder}    ${USECASE}_*.png
-    FOR    ${File}    IN    @{Files}
-        ${Removed}=    Run Keyword And Return Status    Remove File    ${Folder}/${File}
-        IF    not ${Removed}
-            Log    ลบไฟล์ ${File} ไม่สำเร็จ ภาพอาจปนกับรอบก่อน    level=WARN
-        END
-    END
-
-ปิดชุดทดสอบ
-    [Documentation]    บันทึกไฟล์ Excel และปิดทรัพยากรทั้งหมด
-    Run Keyword And Ignore Error    เซฟไฟล์ Excel อย่างปลอดภัย
-    Run Keyword And Ignore Error    Close All Excel Documents
-    Close All Test Browsers
-
-เก็บผลท้ายกรณีทดสอบ
-    [Documentation]    เก็บภาพเมื่อไม่ผ่าน เขียนผลกลับลง Excel แล้วปิด context
-    ...                กรณีที่ถูกข้าม (${ROW_NUM} = 0) จะไม่เขียนทับผลเดิม
-    ${Actual}=    Set Variable    ${ACTUAL_MESSAGE}
-
-    IF    '${TEST STATUS}' == 'FAIL'
-        Run Keyword And Ignore Error
-        ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${TC_ID}_FAILED    fullPage=True
-
-        # กรณีที่ล้มก่อนได้ข้อความจากระบบ ให้บันทึกสาเหตุที่ล้มแทน
-        ${Length}=    Get Length    ${ACTUAL_MESSAGE}
-        IF    ${Length} == 0
-            ${Actual}=    Get Line         ${TEST MESSAGE}    0
-            ${Actual}=    Get Substring    ${Actual}          0    250
-        END
-    END
-
-    IF    ${ROW_NUM} > 0
-        ${ResultPF}=    Set Variable If    '${TEST STATUS}' == 'PASS'    Pass    Fail
-        Run Keyword And Ignore Error    บันทึกผลลง Excel    ${ROW_NUM}    ${Actual}    ${ResultPF}
-    END
-
-    # Ignore Error เพราะกรณีที่ถูกข้ามยังไม่มี context ถูกเปิด
-    Run Keyword And Ignore Error    Close Test Context
-
-
-# =====================================================================
-# 2. การอ่านและเขียนไฟล์ Excel
-# =====================================================================
-
-หาแถวของกรณีทดสอบ
-    [Documentation]    ค้นหมายเลขแถวจากรหัสกรณีทดสอบในคอลัมน์ B (index 0 คือหัวตาราง แถวจึงเป็น index + 1)
-    ...                คืน 0 เมื่อไม่พบ เพื่อให้ teardown ข้ามการเขียนผลแทนที่จะล้ม
-    [Arguments]    ${TestCaseID}
-    ${Ids}=    Read Excel Column    ${COL_ID}    sheet_name=${SHEET}
-    ${Ids}=    Evaluate    ["" if v is None else str(v).strip() for v in $Ids]
-
-    ${Found}=    Run Keyword And Return Status    List Should Contain Value    ${Ids}    ${TestCaseID}
-    IF    not ${Found}
-        Log    ไม่พบ ${TestCaseID} ในคอลัมน์ B ของชีต ${SHEET} จึงไม่เขียนผลกลับ    level=WARN
-        RETURN    ${0}
-    END
-
-    ${Index}=    Get Index From List    ${Ids}    ${TestCaseID}
-    ${Row}=      Evaluate    ${Index} + 1
-    RETURN    ${Row}
-
-บันทึกผลลง Excel
-    [Documentation]    เขียนผลที่ได้จริงและสถานะ Pass/Fail กลับลงไฟล์ Excel ตามแถวของกรณีทดสอบ
-    [Arguments]    ${Row}    ${ActualResult}    ${ResultPF}
-    Write Excel Cell       ${Row}    ${COL_ACTUAL}    ${ActualResult}    sheet_name=${SHEET}
-    Write Excel Cell       ${Row}    ${COL_PF}        ${ResultPF}        sheet_name=${SHEET}
-    เซฟไฟล์ Excel อย่างปลอดภัย
-
-เซฟไฟล์ Excel อย่างปลอดภัย
-    [Documentation]    เซฟลงไฟล์ชั่วคราวก่อน แล้วค่อยย้ายไปทับไฟล์จริง
-    ...                ถ้ารันถูกตัดจบระหว่างเขียน ไฟล์ที่ค้างครึ่ง ๆ จะเป็นไฟล์ชั่วคราว ไฟล์จริงยังสมบูรณ์เสมอ
-    ...                (เดิมเซฟทับไฟล์จริงตรง ๆ พอรันถูกตัดกลางคัน ไฟล์ .xlsx จะขาดท้ายจนเปิดไม่ขึ้น)
-    ${Temp}=    Set Variable    ${DATA_FILE}.saving.xlsx
-    Save Excel Document    ${Temp}
-    Move File              ${Temp}    ${DATA_FILE}
-
-
-# =====================================================================
-# 3. จุดเริ่มของทุกกรณีทดสอบ
-# =====================================================================
-
-ดำเนินการกรณีทดสอบ
-    [Documentation]    แยกทางตามรหัสกรณีทดสอบ
-    ...                TC04_NN  -> ตรวจข้อความแจ้งเตือนรายฟิลด์ (หยุดที่ popup ข้อกำหนด ไม่จองจริง)
-    ...                TC04_04  -> ต้องมีรายการจองค้างอยู่ก่อน จึงเรียก "กรณี TC04_F05" (สำเนาที่เก็บไว้ในไฟล์นี้)
-    ...                TC04_FNN -> โค้ด flow อื่น ๆ ย้ายไปอยู่ที่ Usecase/Usecase_Booking_farmer.robot แล้ว
-    ...                           (ถ้ายังมีแถว TC04_Fxx ที่ไม่ใช่ TC04_04 ถูกเลือกให้รันในไฟล์ Excel จะหา keyword ไม่เจอ)
-    ...
-    ...                ลำดับอาร์กิวเมนต์ต้องตรงกับหัวตารางคอลัมน์ A-G ของชีต ${SHEET}
-    [Arguments]    ${Run}          ${TestCase}    ${TestScenario}
-    ...            ${StartDate}    ${EndDate}     ${Address}    ${ExpectedResult}
-
-    # แถวสรุปผลท้ายชีตไม่มีรหัสกรณีทดสอบ จึงไม่ใช่กรณีทดสอบ
-    IF    '${TestCase}' == '${EMPTY}'
-        Skip    ไม่ใช่กรณีทดสอบ (แถวสรุปผลในไฟล์ Excel)
-    END
-    IF    '${Run}' != 'Yes'
-        Skip    ไม่ได้เลือกให้รัน (Run = ${Run})
-    END
-
-    Set Test Documentation    ${TestScenario}
-    Set Test Variable         ${TC_ID}             ${TestCase}
-    Set Test Variable         ${ACTUAL_MESSAGE}    ${EMPTY}
-
-    ${Row}=    หาแถวของกรณีทดสอบ    ${TestCase}
-    Set Test Variable    ${ROW_NUM}    ${Row}
+ทดสอบหนึ่งแถว
+    #กรอกฟอร์ม -> เก็บข้อความที่ระบบตอบ -> เทียบ Expected แบบตรงกัน 100% -> เขียนผลลง Excel -> ปิด context
+    [Arguments]    ${Row}    ${Cells}
+    ${TestCase}=            Set Variable    ${Cells}[1]
+    ${TestScenario}=        Set Variable    ${Cells}[2]
+    ${ExpectedResult}=      Set Variable    ${Cells}[6]
 
     ${Data}=    Create Dictionary
     ...    EquipmentType=${BOOK_EQ_TYPE}    EquipmentName=${BOOK_EQ_NAME}
-    ...    StartDate=${StartDate}           EndDate=${EndDate}            Address=${Address}
+    ...    StartDate=${Cells}[3]            EndDate=${Cells}[4]            Address=${Cells}[5]
     Log    ${TestCase} : ${TestScenario} | ข้อมูลที่ใช้ทดสอบ ${Data}    level=INFO
 
-    # TC04_04 (IVEc2.0) ต้องมีการจองค้างอยู่ในช่วงเวลาเดียวกันก่อน จึงใช้ขั้นตอนเดียวกับ TC04_F05
-    # คือจองให้สำเร็จหนึ่งครั้งเพื่อสร้างช่วงเวลาที่ถูกจองไว้ แล้วค่อยจองซ้ำ ทำให้ไม่ต้องเตรียมข้อมูลในฐานข้อมูลเอง
-    ${NeedBooked}=  Evaluate    "${TestCase}" == "TC04_04"
+    # ขั้นที่ 1 : กรอกฟอร์มจอง กดสั่งจอง และเก็บสิ่งที่ระบบตอบ
+    # ActualResult เก็บเฉพาะข้อความที่ get text ได้จากระบบ ถ้าสคริปต์ล้มกลางทางให้เป็นค่าว่าง (สาเหตุดูใน log/report)
+    ${Status}    ${Out}=    Run Keyword And Ignore Error    ทำรายการจองและเก็บข้อความ    ${TestCase}    ${Data}
+    # ขั้นที่ 2 : เทียบกับ Expected แบบตรงกัน 100% ถ่ายภาพเมื่อไม่ผ่าน และเขียนผลลง Excel (keyword กลางใน keywords.robot)
+    ตัดสินผลและบันทึกลง Excel    ${Status}    ${Out}    ${ExpectedResult}    ${TestCase}    ${Row}
 
-    IF    ${NeedBooked}
-        กรณี TC04_F05    ${Data}    ${ExpectedResult}
+# =====================================================================
+# 2. กรอกฟอร์มจองและเก็บข้อความที่ระบบตอบ
+# =====================================================================
+
+ทำรายการจองและเก็บข้อความ
+    #แยกทางตามรหัส คืนข้อความที่ระบบตอบ (ActualResult)
+    #TC04_04 (IVEc2.0) ต้องมีการจองค้างอยู่ในช่วงเวลาเดียวกันก่อน จึงใช้ขั้นตอนเดียวกับ TC04_F05
+    #คือจองให้สำเร็จหนึ่งครั้งเพื่อสร้างช่วงเวลาที่ถูกจองไว้ แล้วค่อยจองซ้ำ ทำให้ไม่ต้องเตรียมข้อมูลในฐานข้อมูลเอง
+    [Arguments]    ${TestCase}    ${Data}
+    IF    $TestCase == 'TC04_04'
+        ${ActualResult}=    กรณี TC04_F05    ${Data}
     ELSE
-        ตรวจข้อความแจ้งเตือนรายฟิลด์    ${Data}    ${ExpectedResult}
+        ${ActualResult}=    ตรวจข้อความแจ้งเตือนรายฟิลด์    ${Data}
     END
-
-
-# =====================================================================
-# 4. ส่วนที่ 1 : ตรวจข้อความแจ้งเตือนรายฟิลด์ (TC04_01 - TC04_17)
-# =====================================================================
+    RETURN    ${ActualResult}
 
 ตรวจข้อความแจ้งเตือนรายฟิลด์
-    [Documentation]    กรอกฟอร์มจองแล้วกดปุ่ม "สั่งจอง" เพื่ออ่านข้อความที่ระบบแจ้ง
-    ...
-    ...                ต่างจาก TC01/TC02 ที่ไม่กดปุ่ม submit เพราะหน้านี้ตรวจข้อมูลตอนกดสั่งจองเท่านั้น
-    ...                และหยุดที่ popup ข้อกำหนด ไม่ติ๊กยอมรับ จึงไม่เกิดรายการจองจริงทุกครั้งที่รัน
-    [Arguments]    ${Data}    ${ExpectedResult}
+    #กรอกฟอร์มจองแล้วกดปุ่ม "สั่งจอง" อ่านข้อความที่ระบบแจ้ง ถ้าข้อมูลผ่านจนขึ้น popup ข้อกำหนด จะติ๊กยอมรับแล้วจองจริง
+    #คืนข้อความที่ระบบตอบ (ActualResult) เช่น หัวข้อ popup "การจองสำเร็จ!" ไม่มีข้อความหรือ popup ใหม่คืนค่าว่าง
+    [Arguments]    ${Data}
 
     เตรียมฟอร์มจอง    ${Data}
     ${Filled}=    กรอกฟอร์มจอง    ${Data}
 
     ${Clicked}=    Click Booking Button
     ${Result}=     อ่านผลจากระบบ    ${Filled}    ${Clicked}
-    เก็บภาพหลักฐาน    ${TC_ID}
 
-    บันทึกผลที่ได้จริง    ${Result}
-    ผลตรงกับที่เอกสารกำหนด    ${Result}    ${ExpectedResult}
+    # ข้อมูลผ่านการตรวจสอบถึงขั้นข้อกำหนดแล้ว ติ๊กยอมรับและกด "ยอมรับ" แล้วอ่านหัวข้อ popup ผลการจอง (${Popup_Title})
+    ${Terms}=    Is Terms Popup Shown
+    IF    ${Terms}
+        ${Before}=      Get Popup Title
+        ${Accepted}=    Accept Booking Terms
+        IF    not ${Accepted}
+            Log    ปุ่ม "ยอมรับ" ถูกปิดใช้งาน จึงไม่ได้ยืนยันการจอง    level=INFO
+            RETURN    ${EMPTY}
+        END
+        ${Result}=      รอหัวข้อ popup ใหม่    ${Before}
+    END
+    RETURN    ${Result}
 
 เตรียมฟอร์มจอง
-    [Documentation]    เข้าสู่ระบบ เพิ่มอุปกรณ์ลงตะกร้า แล้วเปิดกล่องตะกร้าที่มีฟอร์มจองอยู่
-    ...                เป็น Pre-Condition ของเอกสาร คือต้องเข้าสู่ระบบและมีอุปกรณ์ในตะกร้าก่อน
-    [Arguments]    ${Data}
+    #เข้าสู่ระบบ เพิ่มอุปกรณ์ลงตะกร้า แล้วเปิดกล่องตะกร้าที่มีฟอร์มจองอยู่ (Pre-Condition ของเอกสาร)
+    [Arguments]    ${Data}    ${Username}=${BOOK_USERNAME}    ${Password}=${BOOK_PASSWORD}
 
     Run Keyword And Ignore Error    Close Test Context
     Open Login Page
     Run Keyword And Ignore Error    Handle Future Dialogs    action=accept
 
-    Input Username    ${BOOK_USERNAME}
-    Input Password    ${BOOK_PASSWORD}
+    Input Username    ${Username}
+    Input Password    ${Password}
     Keyboard Key      press    Tab
     ${Clicked}=    Click Button If Enabled    ${Btn_Login}
     Should Be True    ${Clicked}    msg=ปุ่มเข้าสู่ระบบถูกปิดใช้งาน จึงยังทดสอบการจองไม่ได้
 
+    # popup เข้าสู่ระบบสำเร็จบางครั้งขึ้นช้ากว่า 2 วินาทีที่ Close Login Popup รอ จึงรอปุ่ม "ตกลง" ก่อน
+    Run Keyword And Ignore Error    Wait For Elements State    ${Btn_Verify}    visible    10s
     Close Login Popup
     Open Search Equipment Page
     Clear Cart
@@ -271,8 +186,7 @@ Booking Equipment Farmer : ${TestCase}
     END
 
 อ่านสถานะอุปกรณ์ในตะกร้า
-    [Documentation]    อ่านข้อความ "สถานะ: ..." บนการ์ดอุปกรณ์ในกล่องตะกร้า
-    ...                คืนข้อความว่างเมื่ออ่านไม่ได้ ผู้เรียกจะได้ถือว่าตรวจไม่ได้ ไม่ใช่ว่าสถานะผิด
+    #อ่านข้อความ "สถานะ: ..." บนการ์ดอุปกรณ์ในตะกร้า คืนข้อความว่างเมื่ออ่านไม่ได้ (ถือว่าตรวจไม่ได้ ไม่ใช่สถานะผิด)
     ${Text}=      Get Cart Text
     ${Found}=     Evaluate    re.search(r"สถานะ\\s*[:：]\\s*([^\\r\\n]+)", $Text)    modules=re
     ${Status}=    Evaluate    $Found.group(1).strip() if $Found else ""
@@ -286,11 +200,8 @@ Booking Equipment Farmer : ${TestCase}
     RETURN    ${Status}
 
 ค้นหาอุปกรณ์
-    [Documentation]    เลือกประเภทอุปกรณ์ให้เข้าคู่กับชื่อที่จะค้นหา แล้วพิมพ์ชื่อลงช่องค้นหา คืนจำนวนการ์ดที่พบ
-    ...
-    ...                ${Type} = AUTO ให้สคริปต์อ่าน dropdown แล้วจับคู่ประเภทจากชื่อที่ค้นหาเอง
-    ...                ระบุประเภทมาก็ใช้ตามนั้น ค่าว่างคือไม่กรองประเภท
-    ...                เลือกประเภทแล้วยังไม่พบ จะล้างตัวกรองแล้วค้นใหม่อีกครั้งก่อนสรุปว่าไม่พบจริง
+    #เลือกประเภทอุปกรณ์แล้วค้นด้วยชื่อ คืนจำนวนการ์ดที่พบ (${Type}=AUTO ให้จับคู่ประเภทจากชื่อเอง)
+    #เลือกประเภทแล้วยังไม่พบ จะล้างตัวกรองแล้วค้นใหม่ก่อนสรุปว่าไม่พบจริง
     [Arguments]    ${Type}    ${Name}
 
     IF    '${Type}' == 'AUTO'
@@ -313,8 +224,7 @@ Booking Equipment Farmer : ${TestCase}
     RETURN    ${Cards}
 
 กรอกฟอร์มจอง
-    [Documentation]    เลือกวันเริ่ม วันสิ้นสุด และกรอกที่อยู่ คืนสรุปสิ่งที่เกิดขึ้นกับแต่ละช่อง
-    ...                ช่องวันที่เป็น readonly จึงเลือกจากปฏิทินเท่านั้น ค่าว่างในชีตแปลว่าไม่ต้องแตะช่องนั้น
+    #เลือกวันเริ่ม วันสิ้นสุด กรอกที่อยู่ คืนสรุปผลแต่ละช่อง (ช่องวันที่เป็น readonly เลือกจากปฏิทินเท่านั้น)
     [Arguments]    ${Data}
 
     ${Start}=    เลือกวันที่ลงช่อง    ${Text_StartDate}    ${Data}[StartDate]
@@ -333,90 +243,74 @@ Booking Equipment Farmer : ${TestCase}
     RETURN    ${Summary}
 
 เลือกวันที่ลงช่อง
-    [Documentation]    แปลงค่าในชีตเป็นวันที่จริงแล้วเลือกจากปฏิทิน คืนข้อความบอกผล
-    ...                ค่าว่างแปลว่ากรณีทดสอบตั้งใจไม่เลือกวันที่ จึงไม่แตะช่องนั้นเลย
+    #แปลงค่าในชีตเป็นวันที่จริงแล้วเลือกจากปฏิทิน คืนข้อความบอกผล (ค่าว่าง = ตั้งใจไม่เลือกวันที่)
     [Arguments]    ${Field}    ${Token}
 
     IF    '${Token}' == '${EMPTY}'    RETURN    ไม่ได้เลือกวันที่
 
-    # FIRST / FIRST+n = ให้สคริปต์ถามปฏิทินเองว่าวันแรกที่ระบบยอมให้เลือกคือวันไหน แล้วนับต่อจากวันนั้น
-    # ใช้กับเคสที่ต้องการแค่ "วันที่ถูกต้องวันหนึ่ง" จะได้ไม่พังเมื่อฐานข้อมูลมีการจองค้างอยู่
-    ${IsFirst}=    Evaluate    str($Token).strip().upper().startswith("FIRST")
-    IF    ${IsFirst}
-        ${Base}=    หาวันแรกที่ระบบเปิดให้เลือก    ${Field}
-        ${Len}=     Get Length    ${Base}
+    ${Base}    ${Offset}=    แยกคำวันที่    ${Token}
+    IF    $Base == 'วันแรกที่จองได้'
+        # ถามปฏิทินเองว่าวันแรกที่ระบบยอมให้เลือกคือวันไหน แล้วนับต่อจากวันนั้น จะได้ไม่พังเมื่อฐานข้อมูลมีการจองค้างอยู่
+        ${First}=    หาวันแรกที่ระบบเปิดให้เลือก    ${Field}
+        ${Len}=      Get Length    ${First}
         IF    ${Len} == 0    RETURN    ระบบไม่เปิดให้เลือกวันไหนเลยในช่วง 12 เดือนข้างหน้า
-
-        ${Offset}=     Evaluate    int(str($Token).strip()[5:].strip() or 0)
-        ${Date}=       Evaluate    datetime.date.fromisoformat($Base) + datetime.timedelta(days=${Offset})    modules=datetime
-        ${Display}=    Evaluate    "%02d/%02d/%d" % ($Date.day, $Date.month, $Date.year + ${THAI_YEAR_OFFSET})
+        ${Date}=     Evaluate    datetime.date.fromisoformat($First) + datetime.timedelta(days=${Offset})    modules=datetime
+    ELSE IF    $Base == 'วันนี้'
+        ${Date}=     Evaluate    datetime.date.today() + datetime.timedelta(days=${Offset})    modules=datetime
     ELSE
-        ${Date}    ${Display}=    แปลงค่าวันที่    ${Token}
+        ${Date}=     แปลงวันที่ตายตัว    ${Token}
         IF    $Date is None    RETURN    รูปแบบวันที่ "${Token}" ในไฟล์ทดสอบอ่านไม่ออก จึงเลือกจากปฏิทินไม่ได้
     END
 
+    # ใช้ - คั่นแทน / เพราะข้อความนี้ถูกใช้เป็นชื่อไฟล์ภาพหน้าจอ (/ จะกลายเป็นโฟลเดอร์ย่อย)
+    ${Display}=       Evaluate    "%02d-%02d-%d" % ($Date.day, $Date.month, $Date.year + ${THAI_YEAR_OFFSET})
     ${MonthIndex}=    Evaluate    $Date.year * 12 + $Date.month
     ${Result}=    Pick Date From Calendar    ${Field}    ${Date.day}    ${MonthIndex}    ${Display}
     Log    ${Token} -> ${Display} : ${Result}    level=INFO
     RETURN    ${Result}
 
-แปลงค่าวันที่
-    [Documentation]    แปลงค่าวันที่ในชีตเป็นวันที่จริง คืน 2 ค่า คือ วันที่ และ ข้อความที่ใช้แสดงในรายงาน
-    ...                คืน None เมื่ออ่านค่าไม่ออก
-    ...
-    ...                รองรับ 3 รูปแบบ
-    ...                1) 30/08/2569 : วันที่ตายตัว วัน/เดือน/ปี ตามที่เขียนไว้ในชีต (ชีตยูสเคสนี้ใช้ พ.ศ.)
-    ...                2) AUTO+3 / AUTO-2 / AUTO : นับจากวันที่รันจริง ใช้เมื่อไม่อยากให้วันที่หมดอายุ
-    ...                3) Thu Jun 04 2026 07:00:00 GMT+0700 (...) : ค่าที่คัดลอกมาจากช่องวันที่ของหน้าเว็บ
-    ...
-    ...                ข้อความที่ใช้แสดงคงรูปแบบเดิมตามที่เขียนไว้ในชีต ไม่มีการแปลงปีเพื่อแสดงผลอีก
+แยกคำวันที่
+    #แยกค่าวันที่ภาษาไทยในชีต คืน (จุดเริ่มนับ, จำนวนวันที่บวก/ลบ)
+    #รองรับ: วันนี้ | วันนี้ + 3 วัน | วันนี้ - 3 วัน | วันแรกที่จองได้ | วันแรกที่จองได้ + 3 วัน
+    #ค่าที่ไม่ตรงรูปแบบนี้ (เช่น 30/08/2569) คืนจุดเริ่มนับเป็น None
     [Arguments]    ${Token}
-    ${Text}=    Strip String    ${Token}
+    ${Found}=     Evaluate    re.fullmatch(r"\\s*(วันนี้|วันแรกที่จองได้)\\s*(?:([+-])\\s*(\\d+)\\s*วัน)?\\s*", str($Token))    modules=re
+    IF    $Found is None    RETURN    ${None}    ${0}
+    ${Base}=      Evaluate    $Found.group(1)
+    ${Offset}=    Evaluate    (-1 if $Found.group(2) == "-" else 1) * int($Found.group(3) or 0)
+    RETURN    ${Base}    ${Offset}
 
-    ${IsAuto}=    Evaluate    $Text.upper().startswith("AUTO")
-    IF    ${IsAuto}
-        ${Offset}=     Evaluate    int($Text[4:].strip() or 0)
-        ${Date}=       Evaluate    datetime.date.today() + datetime.timedelta(days=${Offset})    modules=datetime
-        # ใช้ ${Date.day} ของ Robot Framework แทน f-string เพราะ Evaluate ไม่แทนค่า $ตัวแปร ที่อยู่ในเครื่องหมายคำพูด
-        ${Display}=    Set Variable    ${Date.day}/${Date.month}/${Date.year}
-        RETURN    ${Date}    ${Display}
+แปลงวันที่ตายตัว
+    #แปลงวันที่ตายตัวในชีต (วว/ดด/ปปปป เป็น พ.ศ. หรือ ค.ศ.) เป็นวันที่จริง คืน None เมื่ออ่านไม่ออกหรือไม่มีวันนี้จริง
+    [Arguments]    ${Token}
+    ${Text}=      Strip String    ${Token}
+    ${IsSlash}=   Evaluate    re.fullmatch(r"\\d{1,2}/\\d{1,2}/\\d{4}", $Text) is not None    modules=re
+    IF    not ${IsSlash}
+        Log    อ่านค่าวันที่ "${Text}" ในไฟล์ทดสอบไม่ออก    level=WARN
+        RETURN    ${None}
     END
 
-    ${IsSlash}=    Evaluate    re.fullmatch(r"\\d{1,2}/\\d{1,2}/\\d{4}", $Text) is not None    modules=re
-    IF    ${IsSlash}
-        ${Parts}=    Split String          ${Text}    /
-        ${Day}=      Convert To Integer    ${Parts}[0]
-        ${Month}=    Convert To Integer    ${Parts}[1]
-        # ปีในชีตเขียนเป็น พ.ศ. ส่งให้คีย์เวิร์ดกลางจัดการที่เดียว ไม่บวกลบปีตรงนี้
-        ${Year}=     เทียบปีให้เป็น ค.ศ.    ${Parts}[2]
+    ${Parts}=    Split String          ${Text}    /
+    ${Day}=      Convert To Integer    ${Parts}[0]
+    ${Month}=    Convert To Integer    ${Parts}[1]
+    # ปีในชีตเขียนเป็น พ.ศ. ส่งให้คีย์เวิร์ดกลางจัดการที่เดียว ไม่บวกลบปีตรงนี้
+    ${Year}=     เทียบปีให้เป็น ค.ศ.    ${Parts}[2]
 
-        ${Ok}    ${Date}=    Run Keyword And Ignore Error
-        ...    Evaluate    datetime.date(${Year}, ${Month}, ${Day})    modules=datetime
-        IF    '${Ok}' == 'PASS'    RETURN    ${Date}    ${Text}
-
-        Log    วันที่ ${Text} ไม่มีอยู่จริงในปฏิทิน    level=WARN
-        RETURN    ${None}    ${Text}
-    END
-
-    # รูปแบบของ JavaScript เช่น "Thu Jun 04 2026 07:00:00 GMT+0700 (Indochina Time)" อ่านแค่ 4 คำแรกก็พอ
     ${Ok}    ${Date}=    Run Keyword And Ignore Error
-    ...    Evaluate    datetime.datetime.strptime(" ".join($Text.split()[:4]), "%a %b %d %Y").date()    modules=datetime
-    IF    '${Ok}' == 'PASS'    RETURN    ${Date}    ${Text}
-
-    Log    อ่านค่าวันที่ "${Text}" ในไฟล์ทดสอบไม่ออก    level=WARN
-    RETURN    ${None}    ${Text}
+    ...    Evaluate    datetime.date(${Year}, ${Month}, ${Day})    modules=datetime
+    IF    '${Ok}' == 'PASS'    RETURN    ${Date}
+    Log    วันที่ ${Text} ไม่มีอยู่จริงในปฏิทิน    level=WARN
+    RETURN    ${None}
 
 อ่านผลจากระบบ
-    [Documentation]    รวบรวมสิ่งที่ระบบตอบกลับหลังกดสั่งจอง เรียงตามความชัดเจนของหลักฐาน
-    ...                1) วันที่ที่ระบบปิดไม่ให้เลือก  2) ข้อความบน popup  3) ข้อความแจ้งเตือนใต้ช่อง
-    ...                4) popup ข้อกำหนดเด้ง = ข้อมูลผ่านการตรวจสอบ  5) ปุ่มสั่งจองถูกปิดใช้งาน
+    #อ่านข้อความที่ระบบแสดงหลังกดสั่งจอง ตามลำดับ : หัวข้อ popup SweetAlert2 -> ข้อความแจ้งเตือน (หลายข้อความคั่นด้วย " | ")
+    #-> หัวข้อ popup ข้อกำหนดการเช่า (popup นี้เป็น <h1> ธรรมดา ไม่ใช่ SweetAlert2 จึงอ่านด้วย ${Terms_Title})
+    #ไม่มีอะไรเลยคืนค่าว่าง ไม่ใส่ข้อความแทน (ผลการเลือกวันที่บนปฏิทิน/ปุ่มถูกปิด เก็บไว้ใน log เท่านั้น)
     [Arguments]    ${Filled}    ${Clicked}
 
     ${Blocked}=    Get Length    ${Filled}[Blocked]
-    IF    ${Blocked} > 0
-        ${Joined}=    Evaluate    " | ".join($Filled["Blocked"])
-        RETURN    ${Joined}
-    END
+    IF    ${Blocked} > 0    Log    เลือกวันที่บนปฏิทินไม่ได้ : ${Filled}[Blocked]    level=INFO
+    IF    not ${Clicked}    Log    ปุ่ม "สั่งจอง" ถูกปิดใช้งาน จึงไม่ได้กดสั่งจอง    level=INFO
 
     ${Popup}=    Get Popup Title
     IF    '${Popup}' != '${EMPTY}'    RETURN    ${Popup}
@@ -424,84 +318,91 @@ Booking Equipment Farmer : ${TestCase}
     ${Messages}=    Get Validation Messages
     ${Count}=       Get Length    ${Messages}
     IF    ${Count} > 0
-        ${Joined}=    Evaluate    " | ".join($Messages)
-        RETURN    ${Joined}
+        ${Result}=    รวมข้อความหลายรายการ    ${Messages}    ${EMPTY}
+        RETURN    ${Result}
     END
 
+    # ข้อมูลผ่านการตรวจสอบ ระบบจะเปิด popup ข้อกำหนดการเช่า (ไม่ติ๊กยอมรับ จึงยังไม่เกิดการจองจริง)
     ${Terms}=    Is Terms Popup Shown
-    IF    ${Terms}    RETURN    ${PASS_MESSAGE}
-
-    IF    not ${Clicked}    RETURN    ปุ่มสั่งจองถูกปิดใช้งาน ระบบไม่ให้ทำรายการ
-    RETURN    ไม่พบทั้งข้อความแจ้งเตือนและ popup ข้อกำหนด
-
-ผลตรงกับที่เอกสารกำหนด
-    [Documentation]    เทียบผลที่ได้จริงกับ Expected Result ในชีต
-    ...                กรณีที่ระบบปิดวันที่ไม่ให้เลือก ถือว่าป้องกันสำเร็จเช่นกัน แม้ข้อความจะไม่ตรงเอกสาร
-    [Arguments]    ${Actual}    ${Expected}
-
-    ${IsBlocked}=    Evaluate    "ระบบปิดวันที่" in $Actual or "รูปแบบวันที่" in $Actual
-    IF    ${IsBlocked}
-        Should Not Be Equal    ${Expected}    ${PASS_MESSAGE}
-        ...    msg=เลือกวันที่ตามไฟล์ทดสอบไม่ได้ ทั้งที่เอกสารระบุว่าเป็นวันที่ถูกต้อง (${Actual}) — ตรวจว่าวันที่ในชีตยังไม่เลยวันปัจจุบัน
-        Log    ระบบกันด้วยการปิดปุ่มวันที่แทนการแจ้งเตือนหลังกดสั่งจอง : ${Actual}    level=WARN
-        RETURN
+    IF    ${Terms}
+        ${Ok}    ${Title}=    Run Keyword And Ignore Error    Get Text    ${Terms_Title}
+        IF    '${Ok}' == 'PASS'
+            ${Title}=    Strip String    ${Title}
+            RETURN    ${Title}
+        END
     END
-
-    ${Matched}=    Evaluate    $Expected.strip() in $Actual or $Actual in $Expected.strip()
-    Should Be True    ${Matched}
-    ...    msg=ระบบตอบว่า "${Actual}" แต่เอกสารกำหนดไว้ว่า "${Expected}"
+    RETURN    ${EMPTY}
 
 
-# =====================================================================
-# 5. สำเนาที่จำเป็นสำหรับ TC04_04 (IVEc2.0) เท่านั้น
+# 3. สำเนาที่จำเป็นสำหรับ TC04_04 (IVEc2.0) เท่านั้น
 # ต้นฉบับของ flow นี้ (และเคสอื่น ๆ TC04_F01-F04) ย้ายไปอยู่ที่ Usecase/Usecase_Booking_farmer.robot แล้ว
 # =====================================================================
 
 กรณี TC04_F05
-    [Documentation]    BK01-04 : จองซ้ำช่วงเวลาเดิมของอุปกรณ์ชิ้นเดิม ระบบต้องไม่อนุญาต
-    ...                จองรอบแรกให้สำเร็จก่อน แล้วจองรอบสองด้วยช่วงเวลาเดียวกัน
-    [Arguments]    ${Data}    ${ExpectedResult}
+    #BK01-04 / IVEc2.0 : ${BOOK_USERNAME} จองให้สำเร็จก่อน (รอบ 1) แล้ว ${BOOK_USERNAME_2} จองวันเดียวกันซ้ำ (รอบ 2)
+    #ระบบต้องไม่อนุญาต ถ้าผ่านถึงข้อกำหนดจะกดยอมรับต่อดูผลจริง (คำขอที่ชนกันใช้ทดสอบ AB01-01 ต่อได้) คืนข้อความที่ระบบตอบในรอบที่ 2
+    [Arguments]    ${Data}
 
     # ---------- รอบที่ 1 : จองให้สำเร็จเพื่อสร้างช่วงเวลาที่ถูกจองไว้แล้ว ----------
     เตรียมฟอร์มจอง    ${Data}
-    กรอกฟอร์มจอง    ${Data}
+    ${Fixed}=    แปลงวันที่จองได้เป็นวันที่จริง    ${Data}
+    กรอกฟอร์มจอง    ${Fixed}
     ${Clicked}=    Click Booking Button
     Should Be True    ${Clicked}    msg=จองรอบแรกไม่ได้ จึงยังทดสอบการจองซ้ำไม่ได้
 
+    ${Before}=      Get Popup Title
     ${Accepted}=    Accept Booking Terms
-    ${First}=       Get Popup Title
-    เก็บภาพหลักฐาน    ${TC_ID}_จองรอบแรก
-    Should Contain    ${First}    ${BOOK_SUCCESS}
+    ${First}=       รอหัวข้อ popup ใหม่    ${Before}
+    Should Be Equal    ${First}    ${BOOK_SUCCESS}
     ...    msg=จองรอบแรกไม่สำเร็จ (${First}) จึงยังทดสอบการจองซ้ำไม่ได้
+    Log    ${BOOK_USERNAME} จองสำเร็จ ${Fixed}[StartDate] - ${Fixed}[EndDate]    level=INFO
 
-    # ---------- รอบที่ 2 : จองช่วงเวลาเดิมซ้ำ ----------
-    เตรียมฟอร์มจอง    ${Data}
-    ${Filled}=    กรอกฟอร์มจอง    ${Data}
+    # ---------- รอบที่ 2 : ผู้เช่าอีกคนจองช่วงเวลาเดิมซ้ำ ----------
+    เตรียมฟอร์มจอง    ${Fixed}    ${BOOK_USERNAME_2}    ${BOOK_PASSWORD_2}
+    ${Filled}=    กรอกฟอร์มจอง    ${Fixed}
 
     ${Clicked}=    Click Booking Button
-    ${Terms}=      Is Terms Popup Shown
     ${Result}=     อ่านผลจากระบบ    ${Filled}    ${Clicked}
-    เก็บภาพหลักฐาน    ${TC_ID}_จองซ้ำ
 
-    บันทึกผลที่ได้จริง    ${Result}
-    ${Booked}=    Evaluate    "${BOOK_SUCCESS}" in $Result
-    Should Not Be True    ${Booked}
-    ...    msg=ระบบให้จองซ้ำช่วงเวลาที่ถูกจองไปแล้วได้ (${Result})
+    # ผ่านการตรวจสอบถึงขั้นข้อกำหนดแล้ว แปลว่าระบบยังไม่กัน จึงกดยอมรับต่อเพื่อดูผลสุดท้ายจากระบบ
+    ${Terms}=    Is Terms Popup Shown
+    IF    ${Terms}
+        ${Before}=    Get Popup Title
+        Accept Booking Terms
+        ${Result}=    รอหัวข้อ popup ใหม่    ${Before}
+    END
 
-    ผลตรงกับที่เอกสารกำหนด    ${Result}    ${ExpectedResult}
+    Log    ${BOOK_USERNAME_2} จอง ${Fixed}[StartDate] - ${Fixed}[EndDate] ซ้ำกับ ${BOOK_USERNAME} : "${Result}"    level=INFO
+    RETURN    ${Result}
 
+แปลงวันที่จองได้เป็นวันที่จริง
+    #แปลงค่า "วันแรกที่จองได้" / "วันแรกที่จองได้ + n วัน" ใน ${Data} เป็นวันที่ตายตัว (วว/ดด/ปปปป พ.ศ.) คืน Dictionary ใหม่
+    #ต้องเรียกตอนฟอร์มจองเปิดอยู่ ใช้กับ TC04_04 เพื่อให้ผู้เช่าคนที่ 2 จองวันเดียวกับคนแรกได้ตรงกันทุกวัน
+    [Arguments]    ${Data}
+    ${Fixed}=    Copy Dictionary    ${Data}
+    ${First}=    หาวันแรกที่ระบบเปิดให้เลือก    ${Text_StartDate}
+    Should Not Be Empty    ${First}    msg=ปฏิทินไม่เปิดให้เลือกวันไหนเลยในช่วง 12 เดือนข้างหน้า จึงยังทดสอบการจองซ้ำไม่ได้
+    # หาวันแรกเสร็จแล้วปฏิทินยังเปิดค้าง กด Escape ปิดก่อน ให้การเลือกวันที่ครั้งถัดไปเริ่มจากสภาพปกติ
+    Run Keyword And Ignore Error    Keyboard Key    press    Escape
 
-# =====================================================================
-# 6. คีย์เวิร์ดช่วยเหลือ
-# =====================================================================
+    FOR    ${Key}    IN    StartDate    EndDate
+        ${Base}    ${Offset}=    แยกคำวันที่    ${Fixed}[${Key}]
+        IF    $Base != 'วันแรกที่จองได้'    CONTINUE
+        ${Date}=    Evaluate    datetime.date.fromisoformat($First) + datetime.timedelta(days=${Offset})    modules=datetime
+        ${Text}=    Evaluate    "%02d/%02d/%d" % ($Date.day, $Date.month, $Date.year + ${THAI_YEAR_OFFSET})
+        Set To Dictionary    ${Fixed}    ${Key}=${Text}
+    END
+    Log    แปลงวันที่เป็น ${Fixed}[StartDate] - ${Fixed}[EndDate]    level=INFO
+    RETURN    ${Fixed}
 
-บันทึกผลที่ได้จริง
-    [Documentation]    จำข้อความที่ระบบตอบกลับไว้ให้ teardown เขียนลงคอลัมน์ ActualResult
-    [Arguments]    ${Text}
-    Set Test Variable    ${ACTUAL_MESSAGE}    ${Text}
+รอหัวข้อ popup ใหม่
+    #รอจน popup ขึ้นหัวข้อใหม่ที่ไม่ว่างและไม่ใช่ค่าเดิม (ราว 12 วินาที) ใช้หลังกดยอมรับข้อกำหนด ไม่พบคืนค่าว่าง
+    [Arguments]    ${Previous}
+    FOR    ${Round}    IN RANGE    40
+        ${Now}=    Get Popup Title
+        IF    $Now and $Now != $Previous    RETURN    ${Now}
+        Sleep    0.3s
+    END
+    # ไม่มี popup ใหม่ภายในเวลาที่รอ คืนค่าว่าง ไม่ใส่ข้อความแทน
+    RETURN    ${EMPTY}
 
-เก็บภาพหลักฐาน
-    [Documentation]    บันทึกภาพหน้าจอไว้เป็นหลักฐานประกอบรายงาน
-    [Arguments]    ${Name}
-    Run Keyword And Ignore Error
-    ...    Take Screenshot    ${SCREENSHOT_DIR}/${USECASE}_${Name}    fullPage=True
